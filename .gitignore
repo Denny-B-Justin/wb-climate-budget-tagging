@@ -1,0 +1,16 @@
+
+#Ignore vscode AI rules
+.github/instructions/codacy.instructions.md
+
+__pycache__/
+wb_1/
+docs/
+.claude
+.streamlit
+CLAUDE.md
+
+Budget Tagging.docx
+CLIMATE BUDGET TAGGING REPORT.docx
+.venv/
+data/
+.env

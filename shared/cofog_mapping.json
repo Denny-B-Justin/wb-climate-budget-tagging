@@ -1,0 +1,160 @@
+{
+    "rio": {
+        "0500": {
+            "climate_tag": "GREEN",
+            "rio_mitigation": 2,
+            "rio_adaptation": 0,
+            "rationale": "Directly classified as Green (Principal) based on COFOG 05 (Environmental Protection)"
+        },
+        "05": {
+            "climate_tag": "GREEN",
+            "rio_mitigation": 2,
+            "rio_adaptation": 0,
+            "rationale": "Directly classified as Green (Principal) based on COFOG 05 (Environmental Protection)"
+        },
+        "0100": {
+            "climate_tag": "NEUTRAL",
+            "rio_mitigation": 0,
+            "rio_adaptation": 0,
+            "rationale": "General public services are typically climate-neutral"
+        },
+        "01": {
+            "climate_tag": "NEUTRAL",
+            "rio_mitigation": 0,
+            "rio_adaptation": 0,
+            "rationale": "General public services are typically climate-neutral"
+        },
+        "0200": {
+            "climate_tag": "NEUTRAL",
+            "rio_mitigation": 0,
+            "rio_adaptation": 0,
+            "rationale": "Defense expenditures are typically climate-neutral"
+        },
+        "02": {
+            "climate_tag": "NEUTRAL",
+            "rio_mitigation": 0,
+            "rio_adaptation": 0,
+            "rationale": "Defense expenditures are typically climate-neutral"
+        },
+        "0300": {
+            "climate_tag": "NEUTRAL",
+            "rio_mitigation": 0,
+            "rio_adaptation": 0,
+            "rationale": "Public order and safety are typically climate-neutral"
+        },
+        "03": {
+            "climate_tag": "NEUTRAL",
+            "rio_mitigation": 0,
+            "rio_adaptation": 0,
+            "rationale": "Public order and safety are typically climate-neutral"
+        },
+        "0700": {
+            "climate_tag": "NEUTRAL",
+            "rio_mitigation": 0,
+            "rio_adaptation": 0,
+            "rationale": "Health expenditures are typically climate-neutral"
+        },
+        "07": {
+            "climate_tag": "NEUTRAL",
+            "rio_mitigation": 0,
+            "rio_adaptation": 0,
+            "rationale": "Health expenditures are typically climate-neutral"
+        },
+        "0900": {
+            "climate_tag": "NEUTRAL",
+            "rio_mitigation": 0,
+            "rio_adaptation": 0,
+            "rationale": "Education expenditures are typically climate-neutral"
+        },
+        "09": {
+            "climate_tag": "NEUTRAL",
+            "rio_mitigation": 0,
+            "rio_adaptation": 0,
+            "rationale": "Education expenditures are typically climate-neutral"
+        },
+        "1000": {
+            "climate_tag": "NEUTRAL",
+            "rio_mitigation": 0,
+            "rio_adaptation": 0,
+            "rationale": "Social protection expenditures are typically climate-neutral"
+        },
+        "10": {
+            "climate_tag": "NEUTRAL",
+            "rio_mitigation": 0,
+            "rio_adaptation": 0,
+            "rationale": "Social protection expenditures are typically climate-neutral"
+        }
+    },
+    "eu": {
+        "0500": {
+            "climate_tag": "GREEN",
+            "primary_objective": "mitigation",
+            "rationale": "Aligned with EU Taxonomy via COFOG 05 (Environmental Protection)"
+        },
+        "05": {
+            "climate_tag": "GREEN",
+            "primary_objective": "mitigation",
+            "rationale": "Aligned with EU Taxonomy via COFOG 05 (Environmental Protection)"
+        },
+        "0100": {
+            "climate_tag": "NEUTRAL",
+            "primary_objective": "none",
+            "rationale": "General public services are outside EU Taxonomy environmental objectives"
+        },
+        "01": {
+            "climate_tag": "NEUTRAL",
+            "primary_objective": "none",
+            "rationale": "General public services are outside EU Taxonomy environmental objectives"
+        },
+        "0200": {
+            "climate_tag": "NEUTRAL",
+            "primary_objective": "none",
+            "rationale": "Defense is outside EU Taxonomy environmental objectives"
+        },
+        "02": {
+            "climate_tag": "NEUTRAL",
+            "primary_objective": "none",
+            "rationale": "Defense is outside EU Taxonomy environmental objectives"
+        },
+        "0300": {
+            "climate_tag": "NEUTRAL",
+            "primary_objective": "none",
+            "rationale": "Public order is outside EU Taxonomy environmental objectives"
+        },
+        "03": {
+            "climate_tag": "NEUTRAL",
+            "primary_objective": "none",
+            "rationale": "Public order is outside EU Taxonomy environmental objectives"
+        },
+        "0700": {
+            "climate_tag": "NEUTRAL",
+            "primary_objective": "none",
+            "rationale": "Health is outside EU Taxonomy environmental objectives"
+        },
+        "07": {
+            "climate_tag": "NEUTRAL",
+            "primary_objective": "none",
+            "rationale": "Health is outside EU Taxonomy environmental objectives"
+        },
+        "0900": {
+            "climate_tag": "NEUTRAL",
+            "primary_objective": "none",
+            "rationale": "Education is outside EU Taxonomy environmental objectives"
+        },
+        "09": {
+            "climate_tag": "NEUTRAL",
+            "primary_objective": "none",
+            "rationale": "Education is outside EU Taxonomy environmental objectives"
+        },
+        "1000": {
+            "climate_tag": "NEUTRAL",
+            "primary_objective": "none",
+            "rationale": "Social protection is outside EU Taxonomy environmental objectives"
+        },
+        "10": {
+            "climate_tag": "NEUTRAL",
+            "primary_objective": "none",
+            "rationale": "Social protection is outside EU Taxonomy environmental objectives"
+        }
+    }
+}
