@@ -9,6 +9,7 @@ import streamlit as st
 import pandas as pd
 import io
 import os
+import tempfile
 from pathlib import Path
 import logging
 import sys
@@ -79,6 +80,7 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+logger.info("Initializing Green Budget Tagging application")
 
 # Custom CSS
 st.markdown(
@@ -191,6 +193,8 @@ if "column_mapping" not in st.session_state:
 def show_landing_page():
     """Display the landing page with role selection."""
 
+    logger.info("Displaying landing page")
+
     st.markdown(
         """
         <div style="text-align: center; padding: 60px 20px;">
@@ -268,6 +272,8 @@ def show_landing_page():
 def show_executive_dashboard():
     """Display minimal executive dashboard."""
 
+    logger.info("Rendering executive dashboard")
+
     # Header with navigation
     col1, col2 = st.columns([4, 1])
     with col1:
@@ -282,6 +288,7 @@ def show_executive_dashboard():
 
     # Database Selection & Search
     available_results = list_results()
+    logger.info("Loaded %d available result records for executive dashboard", len(available_results))
     
     col_s1, col_s2 = st.columns([3, 1])
     with col_s1:
@@ -295,6 +302,7 @@ def show_executive_dashboard():
             or search_query.lower() in str(r.get('year', '')).lower()
             or search_query.lower() in r.get('method', '').lower()
         ]
+        logger.info("Executive search query '%s' matched %d results", search_query, len(filtered_results))
     
     selected_db_file = None
     if filtered_results:
@@ -314,6 +322,7 @@ def show_executive_dashboard():
             selected_db_file = db_filenames[selected_index]
             df = load_result(selected_db_file)
             st.session_state.results_df = df
+            logger.info("Loaded executive result set from database file '%s'", selected_db_file)
             st.info(f"📈 Showing verified findings for **{available_results[selected_index-1]['country']} ({available_results[selected_index-1]['year']})**")
     
     # Load data from session state if not selected from DB
@@ -322,6 +331,7 @@ def show_executive_dashboard():
 
     # If no data, show message
     if df is None:
+        logger.warning("No executive result data available in session state")
         if not available_results:
             st.warning(
                 "⚠️ The intelligence database is currently empty. Please process budget data in the Analyst Workspace first."
@@ -340,6 +350,7 @@ def show_executive_dashboard():
     amount_col = _get_amount_column(df)
 
     if amount_col is None:
+        logger.warning("No amount column found in executive result data; KPI amounts will be skipped")
         st.warning(
             "⚠️ No amount/budget column found in your data. KPI amounts will not be displayed. Please ensure your Excel file has a column named 'amount', 'budget', 'expenditure', or 'value'."
         )
@@ -522,6 +533,8 @@ def show_executive_dashboard():
 
 def show_analyst_dashboard():
     """Display full-featured analyst dashboard."""
+
+    logger.info("Rendering analyst dashboard")
 
     # Header with navigation
     col1, col2 = st.columns([4, 1])
@@ -713,10 +726,15 @@ def show_analyst_dashboard():
             st.metric("Supported Formats", "Excel / Word")
 
         if uploaded_file is not None:
+            logger.info("User uploaded file '%s' for tagging", uploaded_file.name)
             st.success(f"✓ File uploaded: {uploaded_file.name}")
 
             try:
-                temp_path = f"/tmp/{uploaded_file.name}"
+                # temp_path = f"/tmp/{uploaded_file.name}"
+                temp_dir = tempfile.gettempdir() 
+
+                # 2. Combine the temp folder path with your file name safely
+                temp_path = os.path.join(temp_dir, uploaded_file.name)
                 with open(temp_path, "wb") as f:
                     f.write(uploaded_file.getbuffer())
 
@@ -744,6 +762,7 @@ def show_analyst_dashboard():
                 if not st.session_state.column_mapping or st.session_state.get("last_uploaded_file") != uploaded_file.name:
                     st.session_state.column_mapping = processor.column_mapping
                     st.session_state.last_uploaded_file = uploaded_file.name
+                    logger.info("Initialized column mapping for uploaded file '%s'", uploaded_file.name)
 
                 with st.expander("🛠️ Manual Column Mapping", expanded=False):
                     st.info("💡 Map your Excel columns to the standard fields. Mandatory fields are marked with `*`.")
@@ -848,6 +867,12 @@ def show_analyst_dashboard():
                 if st.button(
                     "🚀 Start Tagging", type="primary", use_container_width=True
                 ):
+                    logger.info(
+                        "Starting tagging workflow for '%s' with method '%s' and sample size %s",
+                        uploaded_file.name,
+                        tagging_method,
+                        sample_size,
+                    )
                     with st.spinner("Processing... This may take a few minutes"):
                         try:
                             processor = ExcelProcessor(temp_path)
@@ -1011,10 +1036,22 @@ def show_analyst_dashboard():
                             st.session_state.results_with_comments = results_df.copy()
                             st.session_state.processing_complete = True
                             st.session_state.tagged_file = uploaded_file.name
+                            logger.info(
+                                "Completed tagging for '%s' with %d rows and method '%s'",
+                                uploaded_file.name,
+                                len(results_df),
+                                tagging_method,
+                            )
                             # Note: tagging_method is automatically managed by st.radio() with key="tagging_method"
 
                             # Check for overwrite
                             if result_exists(db_country, db_year, tagging_method):
+                                logger.warning(
+                                    "Result record already exists for %s (%s) using method '%s'",
+                                    db_country,
+                                    db_year,
+                                    tagging_method,
+                                )
                                 st.warning(f"⚠️ Findings for **{db_country} ({db_year})** tagged with **{tagging_method}** already exist in the intelligence database.")
                                 if not st.checkbox("Confirm: Overwrite existing record?", value=False):
                                     st.info("ℹ️ Processing paused. Please confirm overwrite if you wish to proceed.")
@@ -1027,10 +1064,11 @@ def show_analyst_dashboard():
                             st.rerun()
 
                         except Exception as e:
+                            logger.exception("Processing failed for uploaded file '%s'", uploaded_file.name)
                             st.error(f"❌ Error during processing: {str(e)}")
-                            logger.error(f"Processing error: {e}", exc_info=True)
 
             except Exception as e:
+                logger.exception("Failed to read uploaded file '%s'", uploaded_file.name)
                 st.error(f"❌ Error reading file: {str(e)}")
 
     elif active_tab == "📊 Results":
@@ -1192,6 +1230,7 @@ def show_analyst_dashboard():
                         "confidence_dist": get_confidence_distribution(results_df)
                     }
                     
+                    logger.info("Generating Word summary report for %s (%s)", st.session_state.db_country, st.session_state.db_year)
                     report_gen = ReportGenerator()
                     report_path = report_gen.generate_summary_report(
                         results_df,
@@ -1209,6 +1248,7 @@ def show_analyst_dashboard():
                         )
                     st.success(f"✓ Report generated: {report_path.name}")
                 except Exception as e:
+                    logger.exception("Failed to generate Word summary report")
                     st.error(f"Failed to generate report: {e}")
 
             # NEW: Database Commitment
@@ -1219,12 +1259,19 @@ def show_analyst_dashboard():
                 st.info(f"Finalize and commit findings for **{st.session_state.db_country} ({st.session_state.db_year})** to the platform database.")
             with col2:
                 if st.button("💾 Commit to Intelligence Database", type="primary", use_container_width=True):
+                    logger.info(
+                        "Committing results to intelligence database for %s (%s) using method '%s'",
+                        st.session_state.db_country,
+                        st.session_state.db_year,
+                        tagging_method,
+                    )
                     file_path = save_result(
                         results_df, 
                         st.session_state.db_country, 
                         st.session_state.db_year, 
                         tagging_method
                     )
+                    logger.info("Committed results to database file '%s'", os.path.basename(file_path))
                     st.success(f"📦 Successfully committed to Database: `{os.path.basename(file_path)}`")
 
             # Download results
@@ -1326,6 +1373,11 @@ def show_analyst_dashboard():
                 )
 
             if st.button("✏️ Apply Override to Selected Rows", key="apply_override_btn"):
+                logger.info(
+                    "User requested override: climate_tag=%s, rio_marker=%s",
+                    override_tag,
+                    override_rio if has_rio_markers else None,
+                )
                 st.success(
                     "✅ Override applied! Please select rows in the table below to apply tag changes."
                 )
@@ -1425,6 +1477,7 @@ def show_analyst_dashboard():
                     "💾 Save Comments", type="primary", use_container_width=True
                 ):
                     st.session_state.results_with_comments = edited_df
+                    logger.info("Saved %d edited rows with comments", len(edited_df))
                     st.success("✅ Comments saved successfully!")
                     st.rerun()
 
