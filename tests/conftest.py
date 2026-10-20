@@ -31,7 +31,7 @@ def store(tmp_path, monkeypatch):
     q.reset()
 
 
-def make_frame(kind, iso3="ZMB", years=(2022,), n=6, batch_id=None, seed=1, tweak=0.0, actor="tester",
+def make_frame(kind, iso3="ZMB", years=(2022,), n=6, batch_id=None, seed=1, tweak=0.0,
                file="budget.xlsx"):
     """A schema-complete, staged (validity=False) frame like the pipeline would produce."""
     rng = np.random.default_rng(seed)
@@ -76,10 +76,8 @@ def make_frame(kind, iso3="ZMB", years=(2022,), n=6, batch_id=None, seed=1, twea
     out["source_file"] = file
     out["source_row"] = df["row"].astype(int)
     out["methodology_version"] = C.METHODOLOGY_VERSION
-    out["uploaded_by"] = actor
     out["uploaded_at"] = pd.Timestamp.now(tz="UTC")
     out["deactivated_at"] = pd.NaT
-    out["deactivated_by"] = None
     out["deactivation_reason"] = None
     out["replaced_by"] = None
     # per-year fingerprint, order independent (the real implementation lives in src.utils)

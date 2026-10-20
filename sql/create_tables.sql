@@ -38,10 +38,8 @@ CREATE TABLE IF NOT EXISTS `prd_mega`.`sgpbpi163`.`cbt_global_rio_markers` (
   `source_row` INT COMMENT '1-based row number in the data sheet (header = row 1)',
   `content_hash` STRING COMMENT 'Fingerprint of the stored values for this (country, year, batch)',
   `methodology_version` STRING COMMENT 'Version of the keyword lists / rules',
-  `uploaded_by` STRING COMMENT 'Analyst who saved the batch',
   `uploaded_at` TIMESTAMP COMMENT 'UTC time the batch was saved',
   `deactivated_at` TIMESTAMP COMMENT 'UTC time validity became FALSE (NULL = never active or still active)',
-  `deactivated_by` STRING COMMENT 'Who flipped validity to FALSE',
   `deactivation_reason` STRING COMMENT 'replaced | deleted | discarded',
   `replaced_by` STRING COMMENT 'batch_id of the version that replaced this one (reason = replaced)'
 ) USING DELTA COMMENT 'Climate budget tagging - Rio Markers (0/1/2) per budget line. One row per source line; validity=TRUE marks the current version for a (country_iso3, year).' TBLPROPERTIES ('delta.autoOptimize.optimizeWrite' = 'true', 'delta.autoOptimize.autoCompact' = 'true');
@@ -87,10 +85,8 @@ CREATE TABLE IF NOT EXISTS `prd_mega`.`sgpbpi163`.`cbt_global_eu_taxonomy` (
   `source_row` INT COMMENT '1-based row number in the data sheet (header = row 1)',
   `content_hash` STRING COMMENT 'Fingerprint of the stored values for this (country, year, batch)',
   `methodology_version` STRING COMMENT 'Version of the keyword lists / rules',
-  `uploaded_by` STRING COMMENT 'Analyst who saved the batch',
   `uploaded_at` TIMESTAMP COMMENT 'UTC time the batch was saved',
   `deactivated_at` TIMESTAMP COMMENT 'UTC time validity became FALSE (NULL = never active or still active)',
-  `deactivated_by` STRING COMMENT 'Who flipped validity to FALSE',
   `deactivation_reason` STRING COMMENT 'replaced | deleted | discarded',
   `replaced_by` STRING COMMENT 'batch_id of the version that replaced this one (reason = replaced)'
 ) USING DELTA COMMENT 'Climate budget tagging - EU Taxonomy objective flags per budget line. One row per source line; validity=TRUE marks the current version for a (country_iso3, year).' TBLPROPERTIES ('delta.autoOptimize.optimizeWrite' = 'true', 'delta.autoOptimize.autoCompact' = 'true');

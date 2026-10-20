@@ -73,16 +73,16 @@ def test_every_callback_id_exists_in_a_layout(app_module):
     jid = P.new_job_id()
     shutil.copy(SAMPLE, P.job_file(jid, "upload.xlsx"))
     info = P.inspect_upload(SAMPLE, SAMPLE.name)
-    meta = P.Metadata(country_iso3="ZMB", year_mode="column", uploaded_by="t@x.org", source_file=SAMPLE.name)
+    meta = P.Metadata(country_iso3="ZMB", year_mode="column", source_file=SAMPLE.name)
     P.run_tag_job(jid, "upload.xlsx", ".xlsx", "Raw", 1, info.mapping, meta, P.TaggingSettings())
     upload = P.upload_to_store(info)
     found = set()
     _ids(app_module.app.layout, found)
     shell = u.page_shell("tag", None)
     _ids(shell, found)
-    _ids(pages.tag_layout("t@x.org", jid, upload), found)
+    _ids(pages.tag_layout(jid, upload), found)
     _ids(pages.dashboard_layout(), found)
-    _ids(pages.data_layout("t@x.org"), found)
+    _ids(pages.data_layout(), found)
     _ids(pages.methodology_layout(), found)
     _ids(pages.results_content(jid, P.read_status(jid, "tag")), found)
     _ids(pages.upload_panel(upload), found)
@@ -92,7 +92,7 @@ def test_every_callback_id_exists_in_a_layout(app_module):
 
 def test_all_pages_render(app_module):
     import pages
-    for page in (pages.tag_layout("a@b.c", None, None), pages.dashboard_layout(), pages.data_layout("a@b.c"),
+    for page in (pages.home_layout("map.svg"), pages.tag_layout(None, None), pages.dashboard_layout(), pages.data_layout(),
                  pages.methodology_layout(), pages.not_found_layout()):
         assert page is not None
 

@@ -278,7 +278,6 @@ class Metadata:
     currency: str = ""
     data_source: str = ""
     notes: str = ""
-    uploaded_by: str = ""
     source_file: str = ""
 
     def errors(self) -> List[str]:
@@ -288,8 +287,6 @@ class Metadata:
         if self.year_mode == "single":
             if self.single_year is None or not (C.YEAR_MIN <= int(self.single_year) <= C.YEAR_MAX):
                 out.append("Enter a year between %d and %d." % (C.YEAR_MIN, C.YEAR_MAX))
-        if not (self.uploaded_by or "").strip():
-            out.append("Enter your name or e-mail (stored with the data).")
         return out
 
     @property
@@ -558,10 +555,8 @@ def finalize_for_save(kind: str, tagged: pd.DataFrame, meta: Metadata, stats: Di
     df["notes"] = (meta.notes or "").strip() or None
     df["source_file"] = meta.source_file or None
     df["methodology_version"] = C.METHODOLOGY_VERSION
-    df["uploaded_by"] = meta.uploaded_by.strip()
     df["uploaded_at"] = now
     df["deactivated_at"] = pd.NaT
-    df["deactivated_by"] = None
     df["deactivation_reason"] = None
     df["replaced_by"] = None
     hashes = {int(y): content_hash(kind, g) for y, g in df.groupby("year")}
@@ -783,7 +778,7 @@ def run_tag_job(job_id: str, upload_name: str, suffix: str, sheet: Optional[str]
                      finished=time.time())
 
 
-def run_save_job(job_id: str, actor: str, replace: bool, queries_module: Any) -> None:
+def run_save_job(job_id: str, replace: bool, queries_module: Any) -> None:
     """Background job: write the tagged frames of this session to Unity Catalog (staging + atomic flip)."""
     ch = "save"
     try:
@@ -807,7 +802,7 @@ def run_save_job(job_id: str, actor: str, replace: bool, queries_module: Any) ->
                              done=done, total=total)
 
             write_status(job_id, ch, phase="Checking existing data for %s" % C.KIND_LABELS[kind])
-            reports.append(queries_module.save(kind, frame, actor, replace=replace, progress=prog))
+            reports.append(queries_module.save(kind, frame, replace=replace, progress=prog))
         write_status(job_id, ch, state="done", phase="Saved", finished=time.time(),
                      report={"batch_id": batch_id, "reports": reports, "rows": total_rows})
     except queries_module.NeedsConfirmation:

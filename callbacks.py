@@ -67,13 +67,15 @@ def _job_id(job: Optional[Dict[str, Any]]) -> Optional[str]:
 def render_page(search, job, upload):
     page = _page_key(search)
     logo = get_asset_url("The-World-Bank-group-white.png")
-    if page == C.PAGE_TAG:
+    if page == C.PAGE_HOME:
+        body = pages.home_layout(get_asset_url("world-dots.svg"))
+    elif page == C.PAGE_TAG:
         P.cleanup_old_jobs()
-        body = pages.tag_layout(_actor(), _job_id(job), upload if _job_id(job) else None)
+        body = pages.tag_layout(_job_id(job), upload if _job_id(job) else None)
     elif page == C.PAGE_DASHBOARD:
         body = pages.dashboard_layout()
     elif page == C.PAGE_DATA:
-        body = pages.data_layout(_actor())
+        body = pages.data_layout()
     elif page == C.PAGE_METHODOLOGY:
         body = pages.methodology_layout()
     else:
@@ -157,13 +159,13 @@ def reinspect(sheet, header_row, upload, job):
     Output("save-region", "children"), Output("poll-tag", "disabled"), Output("tag-rendered", "data"),
     Output("run-btn", "disabled"), Output("cancel-btn", "style"), Output("cancel-btn", "disabled", allow_duplicate=True),
     Input("run-btn", "n_clicks"),
-    State("meta-country", "value"), State("meta-by", "value"), State("meta-currency", "value"), State("meta-source", "value"),
+    State("meta-country", "value"), State("meta-currency", "value"), State("meta-source", "value"),
     State("meta-notes", "value"), State("meta-year-mode", "value"), State("meta-year", "value"),
     State("opt-methods", "value"),
     State({"type": "map", "field": ALL}, "value"), State({"type": "map", "field": ALL}, "id"),
     State("upload-store", "data"), State("job-store", "data"),
     prevent_initial_call=True)
-def run_tagging(n, country, by, currency, source, notes, year_mode, year, methods, map_values, map_ids, upload, job):
+def run_tagging(n, country, currency, source, notes, year_mode, year, methods, map_values, map_ids, upload, job):
     def stop(msg):
         return (u.notice("error", msg), None, None, None, True, "", False, HIDE, False)
 
@@ -171,7 +173,7 @@ def run_tagging(n, country, by, currency, source, notes, year_mode, year, method
     if not upload or not jid:
         return stop("Upload a budget file first (step 2).")
     meta = P.Metadata(country_iso3=country or "", year_mode=year_mode or "column", single_year=int(year) if year not in (None, "") else None,
-                      currency=currency or "", data_source=source or "", notes=notes or "", uploaded_by=(by or "").strip(),
+                      currency=currency or "", data_source=source or "", notes=notes or "",
                       source_file=upload["filename"])
     errors = meta.errors()
     mapping = {i["field"]: v for i, v in zip(map_ids or [], map_values or []) if v}
@@ -267,24 +269,20 @@ def save_flow(n_save, n_cancel, n_confirm, job, replace):
         intro: List[Any] = []
         if changed:
             intro.append(u.notice("warn", [
-                "Data for the same country and year already exists with different values. If you continue, the old rows are kept but "
-                "marked ", html.Code("validity = FALSE"), " (soft-delete) and the new rows are saved as ", html.Code("validity = TRUE"),
-                ", in one atomic step. You can restore the old version later."], "Replace existing data?"))
+                "Data for the same country and year already exists with different values."], "Replace existing data?"))  #If you continue, the old rows are kept but "marked ", html.Code("validity = FALSE"), " (soft-delete) and the new rows are saved as ", html.Code("validity = TRUE"), in one atomic step. You can restore the old version later.
         elif nothing:
             intro.append(u.notice("info", "Everything in this file is already stored with identical values. Nothing needs to be written.",
                                   "Already saved"))
         else:
-            intro.append(u.notice("info", "New country-years are appended with validity = TRUE; nothing existing is touched."))
+            intro.append(u.notice("info", "New country-years will be added to the dashboard; No conflicts found.")) #New country-years are appended with validity = TRUE; nothing existing is touched.
         label = "Replace and save" if changed else ("Close" if nothing else "Save")
         return False, [*intro, pages.plan_table(plans)], label, bool(changed), no_update, no_update
     # confirm
     status = P.read_status(jid, "save")
     if P.effective_state(status) == "running":
         raise PreventUpdate
-    meta = (P.get_object(jid, "result.pkl") or {}).get("meta")
-    actor = _actor() or (meta.uploaded_by if meta else "")
     P.write_status(jid, "save", state="running", phase="Preparing", done=0, total=0, error=None, report=None)
-    P.start_thread(P.run_save_job, jid, actor or "unknown", bool(replace), q)
+    P.start_thread(P.run_save_job, jid, bool(replace), q)
     return True, no_update, no_update, no_update, pages.save_status_content(P.read_status(jid, "save"), "running"), False
 
 
@@ -406,8 +404,8 @@ def render_dashboard(kind, basis, year, countries):
 # Data in Unity Catalog
 # ══════════════════════════════════════════════════════════════════════════
 
-_VERSION_COLS = ["kind", "country", "year", "status", "n_lines", "uploaded_at", "uploaded_by", "source_file", "batch_id",
-                 "deactivated_at", "deactivated_by"]
+_VERSION_COLS = ["kind", "country", "year", "status", "n_lines", "uploaded_at", "source_file", "batch_id",
+                 "deactivated_at"]
 
 
 def _where_block() -> Any:
@@ -418,8 +416,8 @@ def _where_block() -> Any:
     return html.Div([
         html.P(["Two global tables, one row per budget line: ", html.Code(rio), " and ", html.Code(eu), "."], className="doc-p"),
         html.Pre(html.Code("-- current version of one country-year\nSELECT * FROM %s\nWHERE validity = TRUE AND country_iso3 = 'ZMB' AND year = 2024;\n\n"
-                           "-- every version ever saved, newest first\nSELECT batch_id, validity, uploaded_at, uploaded_by, COUNT(*) AS lines\n"
-                           "FROM %s\nWHERE country_iso3 = 'ZMB'\nGROUP BY batch_id, validity, uploaded_at, uploaded_by\nORDER BY uploaded_at DESC;" % (rio, rio)),
+                           "-- every version ever saved, newest first\nSELECT batch_id, validity, uploaded_at, COUNT(*) AS lines\n"
+                           "FROM %s\nWHERE country_iso3 = 'ZMB'\nGROUP BY batch_id, validity, uploaded_at\nORDER BY uploaded_at DESC;" % (rio, rio)),
                  className="doc-code")])
 
 
@@ -545,18 +543,17 @@ def data_action_flow(_d, _r, _x, _c, _ok, selected, rows, action, version):
     # confirm
     if not action:
         raise PreventUpdate
-    actor = _actor() or "app user"
     if not u.can_manage(_actor()):
         return True, no_update, no_update, None, u.notice("error", "You are not on the list of users allowed to change versions."), no_update
     try:
         if action["action"] == "delete":
-            n = q.soft_delete(action["kind"], action["country_iso3"], [int(action["year"])], action["batch_id"], actor)
+            n = q.soft_delete(action["kind"], action["country_iso3"], [int(action["year"])], action["batch_id"])
             msg = u.notice("ok", "%s lines are now validity = FALSE (soft-deleted)." % u.fmt_int(n))
         elif action["action"] == "restore":
-            n = q.restore(action["kind"], action["country_iso3"], action["batch_id"], actor, years=[int(action["year"])])
+            n = q.restore(action["kind"], action["country_iso3"], action["batch_id"], years=[int(action["year"])])
             msg = u.notice("ok", "Restored: this version is current again (%s rows updated)." % u.fmt_int(n))
         else:
-            q.discard_staged(action["kind"], action["batch_id"], actor)
+            q.discard_staged(action["kind"], action["batch_id"])
             msg = u.notice("ok", "The staged batch was marked as discarded.")
     except q.StoreError as exc:
         return True, no_update, no_update, None, u.notice("error", str(exc), "Not changed"), no_update

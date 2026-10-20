@@ -37,7 +37,7 @@ def test_csv_with_semicolons_and_latin1(tmp_path):
     info = P.inspect_upload(p, "b.csv")
     assert info.mapping["prog1"] == "prog1"
     raw = P.read_sheet(p, ".csv")
-    meta = P.Metadata(country_iso3="CIV", year_mode="column", uploaded_by="me")
+    meta = P.Metadata(country_iso3="CIV", year_mode="column")
     prep = P.prepare_lines(raw, info.mapping, meta)
     assert prep.lines["amount"].tolist() == [1234.5, -100.0]
     assert prep.lines["func1"].tolist() == ["0500", "01"]          # leading zeros survive CSV
@@ -66,39 +66,39 @@ def test_parse_year(value, expected):
 def test_prepare_lines_year_modes_and_errors():
     raw = pd.DataFrame({"yr": [2020, 2021, None], "title": ["Solar farm", "Salaries", None], "amt": ["10", "20", None]})
     mp = {"year": "yr", "prog1": "title", "amount": "amt"}
-    prep = P.prepare_lines(raw, mp, P.Metadata(country_iso3="KEN", year_mode="column", uploaded_by="u"))
+    prep = P.prepare_lines(raw, mp, P.Metadata(country_iso3="KEN", year_mode="column"))
     assert prep.years == [2020, 2021] and prep.n_dropped_empty == 1
     # single year overrides the column
     prep = P.prepare_lines(raw, {"prog1": "title", "amount": "amt"},
-                           P.Metadata(country_iso3="KEN", year_mode="single", single_year=2019, uploaded_by="u"))
+                           P.Metadata(country_iso3="KEN", year_mode="single", single_year=2019))
     assert prep.years == [2019]
     # a row with data but no year is an error, not silently dropped
     raw2 = raw.copy()
     raw2.loc[1, "yr"] = None
     with pytest.raises(P.PipelineError, match="no readable year"):
-        P.prepare_lines(raw2, mp, P.Metadata(country_iso3="KEN", year_mode="column", uploaded_by="u"))
+        P.prepare_lines(raw2, mp, P.Metadata(country_iso3="KEN", year_mode="column"))
     with pytest.raises(P.PipelineError, match="Map at least one"):
-        P.prepare_lines(raw, {"amount": "amt"}, P.Metadata(country_iso3="KEN", year_mode="single", single_year=2020, uploaded_by="u"))
+        P.prepare_lines(raw, {"amount": "amt"}, P.Metadata(country_iso3="KEN", year_mode="single", single_year=2020))
     with pytest.raises(P.PipelineError, match="more than one field"):
         P.prepare_lines(raw, {"prog1": "title", "prog2": "title"},
-                        P.Metadata(country_iso3="KEN", year_mode="single", single_year=2020, uploaded_by="u"))
+                        P.Metadata(country_iso3="KEN", year_mode="single", single_year=2020))
     with pytest.raises(P.PipelineError, match="Year"):
-        P.prepare_lines(raw, {"prog1": "title"}, P.Metadata(country_iso3="KEN", year_mode="column", uploaded_by="u"))
+        P.prepare_lines(raw, {"prog1": "title"}, P.Metadata(country_iso3="KEN", year_mode="column"))
 
 
 def test_metadata_validation():
     m = P.Metadata()
     errs = m.errors()
-    assert any("country" in e for e in errs) and any("name" in e for e in errs)
-    assert P.Metadata(country_iso3="ZMB", year_mode="single", single_year=1800, uploaded_by="x").errors()
-    assert not P.Metadata(country_iso3="ZMB", year_mode="column", uploaded_by="x").errors()
+    assert any("country" in e for e in errs)
+    assert P.Metadata(country_iso3="ZMB", year_mode="single", single_year=1800).errors()
+    assert not P.Metadata(country_iso3="ZMB", year_mode="column").errors()
 
 
 # ------------------------------------------------------------------------------------------- tagging
 def _prepared():
     info = P.inspect_upload(SAMPLE, SAMPLE.name)
     raw = P.read_sheet(SAMPLE, ".xlsx", info.sheet)
-    return P.prepare_lines(raw, info.mapping, P.Metadata(country_iso3="ZMB", year_mode="column", uploaded_by="u"))
+    return P.prepare_lines(raw, info.mapping, P.Metadata(country_iso3="ZMB", year_mode="column"))
 
 
 def test_dedup_is_exactly_equivalent_to_row_by_row_tagging():
@@ -188,10 +188,10 @@ def test_content_hash_ignores_order_and_notes_but_sees_values():
     lines = prep.lines.copy()
     lines.loc[:11, "year"] = 2023                                    # two years in one file
     t = P.tag_lines(lines, P.TaggingSettings()).rio
-    meta = P.Metadata(country_iso3="ZMB", uploaded_by="a", currency="ZMW", notes="one")
+    meta = P.Metadata(country_iso3="ZMB", currency="ZMW", notes="one")
     a = P.finalize_for_save(C.KIND_RIO, t, meta, {}, "b1")
     shuffled = t.sample(frac=1.0, random_state=3).reset_index(drop=True)
-    meta2 = P.Metadata(country_iso3="ZMB", uploaded_by="zzz", currency="ZMW", notes="other note", source_file="other.xlsx")
+    meta2 = P.Metadata(country_iso3="ZMB", currency="ZMW", notes="other note", source_file="other.xlsx")
     b = P.finalize_for_save(C.KIND_RIO, shuffled, meta2, {}, "b2")
     assert set(a["content_hash"]) == set(b["content_hash"]) or a.groupby("year")["content_hash"].first().to_dict() == \
         b.groupby("year")["content_hash"].first().to_dict()
@@ -202,7 +202,7 @@ def test_content_hash_ignores_order_and_notes_but_sees_values():
     assert a[a["year"] == y]["content_hash"].iloc[0] != c[c["year"] == y]["content_hash"].iloc[0]
     other_year = [yy for yy in a["year"].unique() if yy != y][0]
     assert a[a["year"] == other_year]["content_hash"].iloc[0] == c[c["year"] == other_year]["content_hash"].iloc[0]
-    d = P.finalize_for_save(C.KIND_RIO, t, P.Metadata(country_iso3="ZMB", uploaded_by="a", currency="USD"),
+    d = P.finalize_for_save(C.KIND_RIO, t, P.Metadata(country_iso3="ZMB", currency="USD"),
                             {}, "b4")
     assert a["content_hash"].iloc[0] != d["content_hash"].iloc[0]       # currency is part of the meaning
 
@@ -210,7 +210,7 @@ def test_content_hash_ignores_order_and_notes_but_sees_values():
 def test_finalized_frame_matches_table_schema():
     prep = _prepared()
     tg = P.tag_lines(prep.lines, P.TaggingSettings())
-    meta = P.Metadata(country_iso3="ZMB", uploaded_by="a")
+    meta = P.Metadata(country_iso3="ZMB")
     for kind, df in ((C.KIND_RIO, tg.rio), (C.KIND_EU, tg.eu)):
         out = P.finalize_for_save(kind, df, meta, tg.stats, "b1")
         assert list(out.columns) == C.column_names(kind)
@@ -243,28 +243,28 @@ def test_end_to_end_jobs(tmp_path, monkeypatch):
     import shutil
     shutil.copy(SAMPLE, P.job_file(jid, "upload.xlsx"))
     info = P.inspect_upload(SAMPLE, SAMPLE.name)
-    meta = P.Metadata(country_iso3="ZMB", year_mode="column", currency="ZMW", uploaded_by="ana@x.org", source_file=SAMPLE.name)
+    meta = P.Metadata(country_iso3="ZMB", year_mode="column", currency="ZMW", source_file=SAMPLE.name)
     P.run_tag_job(jid, "upload.xlsx", ".xlsx", "Raw", 1, info.mapping, meta, P.TaggingSettings())
     st = P.read_status(jid, "tag")
     assert st["state"] == "done", st
     assert st["stats"]["lines"] == 25 and set(st["summaries"]) == {"rio", "eu"}
     plans = P.build_save_plan(jid, q)
     assert all(set(p["action"]) == {"new"} for p in plans.values())
-    P.run_save_job(jid, "ana@x.org", False, q)
+    P.run_save_job(jid, False, q)
     sv = P.read_status(jid, "save")
     assert sv["state"] == "done", sv
     assert q.aggregates(C.KIND_RIO)["n_lines"].sum() == 25 and q.aggregates(C.KIND_EU)["n_lines"].sum() == 25
     # same file again -> identical, nothing written
-    P.run_save_job(jid, "ana@x.org", False, q)
+    P.run_save_job(jid, False, q)
     sv = P.read_status(jid, "save")
     assert sv["state"] == "done" and sv["report"]["reports"][0]["rows_written"] == 0
     # change the result -> needs confirmation, then replace
     res = P.get_object(jid, "result.pkl")
     res["rio"].loc[0, "amount"] += 5
     P.put_object(jid, "result.pkl", res)
-    P.run_save_job(jid, "ana@x.org", False, q)
+    P.run_save_job(jid, False, q)
     assert P.read_status(jid, "save")["state"] == "needs_confirmation"
-    P.run_save_job(jid, "bob@x.org", True, q)
+    P.run_save_job(jid, True, q)
     assert P.read_status(jid, "save")["state"] == "done"
     v = q.list_versions(C.KIND_RIO, "ZMB")
     assert set(v["status"]) == {"active", "replaced"} and q.integrity_issues().empty
@@ -284,7 +284,7 @@ def test_error_states_are_reported_not_raised(tmp_path, monkeypatch):
     monkeypatch.setenv(C.ENV_WORK_DIR, str(tmp_path / "w"))
     jid = P.new_job_id()
     (P.job_file(jid, "upload.csv")).write_text("a;b\n1;2\n")
-    meta = P.Metadata(country_iso3="ZMB", year_mode="single", single_year=2020, uploaded_by="u")
+    meta = P.Metadata(country_iso3="ZMB", year_mode="single", single_year=2020)
     P.run_tag_job(jid, "upload.csv", ".csv", None, 1, {"amount": "b"}, meta, P.TaggingSettings())
     st = P.read_status(jid, "tag")
     assert st["state"] == "error" and "Map at least one" in st["error"]

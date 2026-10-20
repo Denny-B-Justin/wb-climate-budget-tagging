@@ -24,45 +24,45 @@ def test_new_country_is_appended_and_active(store):
     df = make_frame(RIO, "ZMB", (2021, 2022))
     plan = q.plan_save(RIO, df)
     assert set(plan["action"]) == {q.ACTION_NEW}
-    rep = q.save(RIO, df, "ana")
+    rep = q.save(RIO, df)
     assert rep["rows_written"] == len(df)
     assert sorted(rep["years_added"]) == [2021, 2022]
     v = active(RIO)
     assert sorted(v["year"]) == [2021, 2022] and v["n_lines"].sum() == len(df)
     # a second country does not touch the first
-    q.save(RIO, make_frame(RIO, "KEN", (2022,)), "ana")
+    q.save(RIO, make_frame(RIO, "KEN", (2022,)))
     assert len(active(RIO, "ZMB")) == 2 and len(active(RIO, "KEN")) == 1
 
 
 def test_identical_upload_is_skipped(store):
     df = make_frame(RIO, "ZMB", (2022,), seed=5)
-    q.save(RIO, df, "ana")
+    q.save(RIO, df)
     again = make_frame(RIO, "ZMB", (2022,), seed=5)          # same numbers, new batch id
     plan = q.plan_save(RIO, again)
     assert list(plan["action"]) == [q.ACTION_SAME]
-    rep = q.save(RIO, again, "ana")
+    rep = q.save(RIO, again)
     assert rep["rows_written"] == 0 and rep["years_unchanged"] == [2022]
     assert q.list_versions(RIO, "ZMB")["batch_id"].nunique() == 1
 
 
 def test_changed_values_need_confirmation_then_soft_delete(store):
     first = make_frame(RIO, "ZMB", (2022,), seed=5)
-    q.save(RIO, first, "ana")
+    q.save(RIO, first)
     second = make_frame(RIO, "ZMB", (2022,), seed=5, tweak=7.0)
     plan = q.plan_save(RIO, second)
     assert list(plan["action"]) == [q.ACTION_CHANGED]
     assert plan.loc[0, "old_batch_id"] == first["batch_id"].iloc[0]
     with pytest.raises(q.NeedsConfirmation):
-        q.save(RIO, second, "bob")
+        q.save(RIO, second)
     # nothing changed yet
     assert active(RIO)["batch_id"].tolist() == [first["batch_id"].iloc[0]]
-    rep = q.save(RIO, second, "bob", replace=True)
+    rep = q.save(RIO, second, replace=True)
     assert rep["years_replaced"] == [2022] and rep["replaced_batches"] == [first["batch_id"].iloc[0]]
     v = q.list_versions(RIO, "ZMB")
     act = v[v["status"] == "active"]
     old = v[v["batch_id"] == first["batch_id"].iloc[0]].iloc[0]
     assert act["batch_id"].tolist() == [second["batch_id"].iloc[0]]
-    assert old["status"] == "replaced" and old["deactivated_by"] == "bob"
+    assert old["status"] == "replaced"
     # rows are still there: validity False, never physically deleted
     lines = q.fetch_lines(RIO, "ZMB", valid_only=None)
     assert len(lines) == len(first) + len(second)
@@ -72,9 +72,9 @@ def test_changed_values_need_confirmation_then_soft_delete(store):
 
 
 def test_only_matching_years_are_replaced(store):
-    q.save(RIO, make_frame(RIO, "ZMB", (2020, 2021, 2022), seed=2), "ana")
+    q.save(RIO, make_frame(RIO, "ZMB", (2020, 2021, 2022), seed=2))
     new = make_frame(RIO, "ZMB", (2021,), seed=2, tweak=3.0)
-    q.save(RIO, new, "bob", replace=True)
+    q.save(RIO, new, replace=True)
     act = active(RIO).sort_values("year")
     assert act["year"].tolist() == [2020, 2021, 2022]
     assert act.loc[act["year"] == 2021, "batch_id"].iloc[0] == new["batch_id"].iloc[0]
@@ -84,7 +84,7 @@ def test_only_matching_years_are_replaced(store):
 
 def test_mixed_plan_new_same_changed(store):
     base = make_frame(RIO, "ZMB", (2020, 2021), seed=9)
-    q.save(RIO, base, "ana")
+    q.save(RIO, base)
     # 2020 identical, 2021 different, 2022 new  -> build one frame
     a = make_frame(RIO, "ZMB", (2020,), seed=9)
     b = make_frame(RIO, "ZMB", (2021,), seed=9, tweak=1.0)
@@ -95,7 +95,7 @@ def test_mixed_plan_new_same_changed(store):
     new["record_id"] = [bid + ":" + str(i) for i in range(len(new))]
     plan = q.plan_save(RIO, new).set_index("year")["action"].to_dict()
     assert plan == {2020: q.ACTION_SAME, 2021: q.ACTION_CHANGED, 2022: q.ACTION_NEW}
-    rep = q.save(RIO, new, "bob", replace=True)
+    rep = q.save(RIO, new, replace=True)
     assert rep["years_unchanged"] == [2020] and rep["years_replaced"] == [2021] and rep["years_added"] == [2022]
     act = active(RIO).set_index("year")
     assert act.loc[2020, "batch_id"] == base["batch_id"].iloc[0]       # untouched
@@ -104,13 +104,13 @@ def test_mixed_plan_new_same_changed(store):
 
 def test_soft_delete_and_restore(store):
     first = make_frame(EU, "ZMB", (2022,), seed=3)
-    q.save(EU, first, "ana")
+    q.save(EU, first)
     bid = first["batch_id"].iloc[0]
-    assert q.soft_delete(EU, "ZMB", [2022], bid, "ana") == len(first)
+    assert q.soft_delete(EU, "ZMB", [2022], bid) == len(first)
     assert active(EU).empty
     v = q.list_versions(EU, "ZMB")
     assert v.loc[0, "status"] == "deleted"
-    n = q.restore(EU, "ZMB", bid, "ana")
+    n = q.restore(EU, "ZMB", bid)
     assert n >= len(first)
     assert active(EU)["batch_id"].tolist() == [bid]
 
@@ -118,9 +118,9 @@ def test_soft_delete_and_restore(store):
 def test_restore_older_batch_replaces_current(store):
     a = make_frame(RIO, "ZMB", (2022,), seed=1)
     b = make_frame(RIO, "ZMB", (2022,), seed=1, tweak=5)
-    q.save(RIO, a, "ana")
-    q.save(RIO, b, "ana", replace=True)
-    q.restore(RIO, "ZMB", a["batch_id"].iloc[0], "carl")
+    q.save(RIO, a)
+    q.save(RIO, b, replace=True)
+    q.restore(RIO, "ZMB", a["batch_id"].iloc[0])
     assert active(RIO)["batch_id"].tolist() == [a["batch_id"].iloc[0]]
     assert q.integrity_issues().empty
 
@@ -128,10 +128,10 @@ def test_restore_older_batch_replaces_current(store):
 def test_soft_delete_refuses_when_data_changed_meanwhile(store):
     a = make_frame(RIO, "ZMB", (2022,), seed=1)
     b = make_frame(RIO, "ZMB", (2022,), seed=1, tweak=5)
-    q.save(RIO, a, "ana")
-    q.save(RIO, b, "ana", replace=True)
+    q.save(RIO, a)
+    q.save(RIO, b, replace=True)
     with pytest.raises(q.StoreError):
-        q.soft_delete(RIO, "ZMB", [2022], a["batch_id"].iloc[0], "ana")
+        q.soft_delete(RIO, "ZMB", [2022], a["batch_id"].iloc[0])
 
 
 def test_row_count_guard_discards_partial_batch(store, monkeypatch):
@@ -139,14 +139,14 @@ def test_row_count_guard_discards_partial_batch(store, monkeypatch):
     orig = store.to_records
     monkeypatch.setattr(store, "to_records", lambda kind, d: orig(kind, d)[:-1])      # lose one row on the way
     with pytest.raises(q.StoreError, match="Row count check failed"):
-        q.save(RIO, df, "ana")
+        q.save(RIO, df)
     assert active(RIO).empty
     assert q.list_versions(RIO, "ZMB")["status"].tolist() == ["discarded"]
 
 
 def test_aggregates_use_only_valid_rows_and_weights(store):
     a = make_frame(RIO, "ZMB", (2022,), seed=1)
-    q.save(RIO, a, "ana")
+    q.save(RIO, a)
     agg = q.aggregates(RIO)
     r = agg.iloc[0]
     amount = a["amount"]
@@ -156,14 +156,14 @@ def test_aggregates_use_only_valid_rows_and_weights(store):
     assert r["weighted_amount"] == pytest.approx((amount * w).sum())
     assert r["principal_amount"] == pytest.approx(amount[a["rio_marker"] == 2].sum())
     b = make_frame(RIO, "ZMB", (2022,), seed=1, tweak=100)
-    q.save(RIO, b, "ana", replace=True)
+    q.save(RIO, b, replace=True)
     assert q.aggregates(RIO).iloc[0]["total_amount"] == pytest.approx(b["amount"].sum())
     assert len(q.aggregates(RIO, valid_only=False)) == 2
 
 
 def test_eu_aggregates(store):
     a = make_frame(EU, "ZMB", (2022,), seed=4)
-    q.save(EU, a, "ana")
+    q.save(EU, a)
     r = q.aggregates(EU).iloc[0]
     assert r["green_amount"] == pytest.approx(a.loc[a["climate_tag"] == "GREEN", "amount"].sum())
     assert r["mitigation_amount"] == pytest.approx(a.loc[a["eu_mitigation"], "amount"].sum())
@@ -174,7 +174,7 @@ def test_null_amounts_and_unicode_round_trip(store):
     a.loc[a.index[0], "amount"] = float("nan")
     a.loc[a.index[1], "prog1"] = "Reboisement d'urgence – défense \"côtière\" \\ backslash"
     a.loc[a.index[2], "notes"] = None
-    q.save(RIO, a, "ana")
+    q.save(RIO, a)
     lines = q.fetch_lines(RIO, "CIV")
     assert lines["amount"].isna().sum() == 1
     assert lines.loc[1, "prog1"] == a.loc[a.index[1], "prog1"]
@@ -185,14 +185,14 @@ def test_null_amounts_and_unicode_round_trip(store):
 def test_bad_frames_are_rejected(store):
     df = make_frame(RIO, "ZMB", (2022,))
     with pytest.raises(q.StoreError):
-        q.save(RIO, df.iloc[0:0], "ana")
+        q.save(RIO, df.iloc[0:0])
     bad = df.copy()
     bad["validity"] = True
     with pytest.raises(q.StoreError):
-        q.save(RIO, bad, "ana")
+        q.save(RIO, bad)
     two = pd.concat([df, make_frame(RIO, "KEN", (2022,))], ignore_index=True)
     with pytest.raises(q.StoreError):
-        q.save(RIO, two, "ana")
+        q.save(RIO, two)
 
 
 def test_json_chunking_respects_limits():
@@ -286,10 +286,10 @@ def test_databricks_sql_text(monkeypatch):
 
 def test_restore_single_year_of_a_multi_year_batch(store):
     a = make_frame(RIO, "ZMB", (2020, 2021), seed=1)
-    q.save(RIO, a, "ana")
+    q.save(RIO, a)
     b = make_frame(RIO, "ZMB", (2020, 2021), seed=1, tweak=9)
-    q.save(RIO, b, "ana", replace=True)
-    n = q.restore(RIO, "ZMB", a["batch_id"].iloc[0], "ana", years=[2021])
+    q.save(RIO, b, replace=True)
+    n = q.restore(RIO, "ZMB", a["batch_id"].iloc[0], years=[2021])
     assert n > 0
     act = active(RIO).set_index("year")["batch_id"].to_dict()
     assert act == {2020: b["batch_id"].iloc[0], 2021: a["batch_id"].iloc[0]}

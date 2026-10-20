@@ -148,7 +148,7 @@ def export_workbook(result: Dict[str, Any]) -> bytes:
             ["Country", "%s (%s)" % (meta.country, meta.country_iso3)],
             ["Years", year_span(stats.get("years", []))],
             ["Currency", meta.currency], ["Data source", meta.data_source], ["Notes", meta.notes],
-            ["Source file", meta.source_file], ["Prepared by", meta.uploaded_by],
+            ["Source file", meta.source_file],
             ["Tagging method", "Rule-based (COFOG lookup + keyword dictionaries)"],
             ["Methodology version", C.METHODOLOGY_VERSION],
             ["Budget lines", stats.get("lines")], ["Unique classifications tagged", stats.get("unique_classifications")],

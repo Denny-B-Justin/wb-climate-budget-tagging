@@ -151,6 +151,24 @@ code, pre { font-family: var(--mono); }
 .section-title { font-size: 26px; font-weight: 600; color: var(--navy); }
 .section-lede { margin-top: 8px; color: var(--ink-soft); max-width: 70ch; }
 
+/* Overview hero: dotted world map on the right, fading into the navy towards the text */
+.hero { position: relative; overflow: hidden; background: var(--navy); color: #fff;
+  min-height: calc(100vh - var(--header-h)); display: flex; align-items: center; }
+.hero::before { content: ""; position: absolute; inset: 0 -6% 0 32%; background: var(--hero-map) center / contain no-repeat;
+  opacity: .55; -webkit-mask-image: linear-gradient(to right, transparent, #000 35%); mask-image: linear-gradient(to right, transparent, #000 35%);
+  pointer-events: none; }
+.hero-inner { position: relative; width: 100%; max-width: calc(var(--content-w) + 2 * var(--gutter)); margin: 0 auto;
+  padding: 72px var(--gutter) 88px; }
+.hero-title { max-width: 15ch; font-size: clamp(2.3rem, 5.4vw, 4.2rem); line-height: 1.06; font-weight: 700; letter-spacing: -.02em; }
+.hero-lede { max-width: 52ch; margin-top: 24px; font-size: clamp(1.05rem, 1.6vw, 1.25rem); line-height: 1.6; font-weight: 300; color: #CBD8E8; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 40px; }
+.hero :focus-visible { outline-color: #fff; }
+.btn-lg { padding: 14px 30px; font-size: 17px; }
+.btn-teal { background: var(--teal); color: var(--navy); }
+.btn-teal:hover { background: #82D7E0; }
+.btn-ghost { background: transparent; color: #fff; border-color: rgba(255,255,255,.55); }
+.btn-ghost:hover { border-color: #fff; background: rgba(255,255,255,.06); }
+
 .notfound { max-width: 608px; margin: 0 auto; padding: 96px var(--gutter); display: grid; gap: 16px; justify-items: start; }
 .notfound .page-title { color: var(--navy); }
 .notfound .page-lede { color: var(--ink-soft); }
@@ -460,6 +478,10 @@ ul.doc-list { list-style: disc; } ol.doc-list { list-style: decimal; }
 }
 @media (max-width: 600px) {
   html { scroll-padding-top: 112px; }
+  .hero::before { inset: auto -20% 0 -20%; height: 45%; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 60%);
+    mask-image: linear-gradient(to bottom, transparent, #000 60%); opacity: .4; }
+  .hero-inner { padding-top: 40px; padding-bottom: 160px; }
+  .hero-actions .btn { flex: 1 1 100%; }
   .app-header { height: auto; }
   .app-header-inner { flex-wrap: wrap; padding-top: 10px; padding-bottom: 0; gap: 2px 12px; }
   .header-nav { width: 100%; justify-content: space-between; overflow-x: auto; scrollbar-width: none; }

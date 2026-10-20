@@ -38,18 +38,20 @@ SAMPLE_DIR = ROOT_DIR / "sample_data"
 # Routing (query-string based so it works behind Posit Connect, like the CBD app)
 # ══════════════════════════════════════════════════════════════════════════
 
+PAGE_HOME = "home"
 PAGE_TAG = "tag"
 PAGE_DASHBOARD = "dashboard"
 PAGE_DATA = "data"
 PAGE_METHODOLOGY = "methodologies"
 PAGES = [
     # key, nav label, href
+    (PAGE_HOME, "Overview", "?page=home"),
     (PAGE_TAG, "Tag a budget", "?page=tag"),
     (PAGE_DASHBOARD, "Dashboard", "?page=dashboard"),
     (PAGE_DATA, "Data in Unity Catalog", "?page=data"),
     (PAGE_METHODOLOGY, "Methodologies", "?page=methodologies"),
 ]
-DEFAULT_PAGE = PAGE_TAG
+DEFAULT_PAGE = PAGE_HOME
 
 # ══════════════════════════════════════════════════════════════════════════
 # Environment variables (read lazily by queries.py / utils.py - never at import)
@@ -156,10 +158,8 @@ _AUDIT_COLS = [
     Col("source_row", "INT", "audit", "1-based row number in the data sheet (header = row 1)"),
     Col("content_hash", "STRING", "audit", "Fingerprint of the stored values for this (country, year, batch)"),
     Col("methodology_version", "STRING", "audit", "Version of the keyword lists / rules"),
-    Col("uploaded_by", "STRING", "audit", "Analyst who saved the batch"),
     Col("uploaded_at", "TIMESTAMP", "audit", "UTC time the batch was saved"),
     Col("deactivated_at", "TIMESTAMP", "audit", "UTC time validity became FALSE (NULL = never active or still active)"),
-    Col("deactivated_by", "STRING", "audit", "Who flipped validity to FALSE"),
     Col("deactivation_reason", "STRING", "audit", "replaced | deleted | discarded"),
     Col("replaced_by", "STRING", "audit", "batch_id of the version that replaced this one (reason = replaced)"),
 ]

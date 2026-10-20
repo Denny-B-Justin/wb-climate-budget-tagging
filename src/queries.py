@@ -312,7 +312,7 @@ def to_records(kind: str, df: pd.DataFrame) -> List[Dict[str, Any]]:
 def _check_frame(kind: str, df: pd.DataFrame) -> None:
     if df is None or len(df) == 0:
         raise StoreError("Nothing to save: the result table is empty.")
-    for col in ("batch_id", "country_iso3", "year", "content_hash", "uploaded_by"):
+    for col in ("batch_id", "country_iso3", "year", "content_hash"):
         if col not in df.columns:
             raise StoreError("Cannot save: column %r is missing." % col)
         if df[col].isna().any():
@@ -747,9 +747,9 @@ def list_versions(kind: Optional[str] = None, iso3: Optional[str] = None) -> pd.
         sql = (
             "SELECT country, country_iso3, year, batch_id, COUNT(*) AS n_lines, "
             "MAX(CASE WHEN validity THEN 1 ELSE 0 END) AS is_valid, "
-            "MIN(uploaded_at) AS uploaded_at, MAX(uploaded_by) AS uploaded_by, MAX(source_file) AS source_file, "
+            "MIN(uploaded_at) AS uploaded_at, MAX(source_file) AS source_file, "
             "MAX(content_hash) AS content_hash, MAX(deactivated_at) AS deactivated_at, "
-            "MAX(deactivated_by) AS deactivated_by, MAX(deactivation_reason) AS deactivation_reason, "
+            "MAX(deactivation_reason) AS deactivation_reason, "
             "MAX(currency) AS currency, MAX(data_source) AS data_source, "
             "MAX(methodology_version) AS methodology_version "
             "FROM %s %s GROUP BY country, country_iso3, year, batch_id" % (table_fqn(k), where)
@@ -761,7 +761,7 @@ def list_versions(kind: Optional[str] = None, iso3: Optional[str] = None) -> pd.
     if not frames:
         return pd.DataFrame(columns=[
             "kind", "country", "country_iso3", "year", "batch_id", "n_lines", "is_valid", "uploaded_at",
-            "uploaded_by", "source_file", "content_hash", "deactivated_at", "deactivated_by",
+            "source_file", "content_hash", "deactivated_at",
             "deactivation_reason", "currency", "data_source", "methodology_version", "status"])
     out = pd.concat(frames, ignore_index=True)
     out = _frame_types(out)
@@ -787,7 +787,7 @@ def active_scopes(kind: str, iso3: str, years: Iterable[int]) -> pd.DataFrame:
     params: Dict[str, Any] = {"iso": iso3}
     sql = (
         "SELECT year, batch_id, COUNT(*) AS n_lines, MAX(content_hash) AS content_hash, "
-        "MIN(uploaded_at) AS uploaded_at, MAX(uploaded_by) AS uploaded_by, MAX(source_file) AS source_file "
+        "MIN(uploaded_at) AS uploaded_at, MAX(source_file) AS source_file "
         "FROM %s WHERE validity = TRUE AND country_iso3 = :iso AND year IN (%s) GROUP BY year, batch_id"
         % (table_fqn(kind), _in_clause("y", years, params))
     )
@@ -915,14 +915,14 @@ def plan_save(kind: str, df: pd.DataFrame) -> pd.DataFrame:
         y = int(r["year"])
         olds = old[old["year"] == y] if len(old) else old
         entry = {"country_iso3": iso3, "year": y, "new_lines": int(r["new_lines"]), "new_hash": r["new_hash"],
-                 "old_batch_id": None, "old_lines": 0, "old_uploaded_at": None, "old_uploaded_by": None,
+                 "old_batch_id": None, "old_lines": 0, "old_uploaded_at": None,
                  "old_source_file": None, "old_batches": 0}
         if len(olds) == 0:
             entry["action"] = ACTION_NEW
         else:
             first = olds.iloc[0]
             entry.update(old_batch_id=first["batch_id"], old_lines=int(olds["n_lines"].sum()),
-                         old_uploaded_at=first["uploaded_at"], old_uploaded_by=first["uploaded_by"],
+                         old_uploaded_at=first["uploaded_at"],
                          old_source_file=first["source_file"], old_batches=int(len(olds)))
             same = len(olds) == 1 and str(first["content_hash"]) == str(r["new_hash"])
             entry["action"] = ACTION_SAME if same else ACTION_CHANGED
@@ -930,8 +930,7 @@ def plan_save(kind: str, df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows).sort_values("year").reset_index(drop=True)
 
 
-def _flip(kind: str, iso3: str, years: Sequence[int], batch_id: Optional[str], actor: str,
-          reason_for_others: str) -> int:
+def _flip(kind: str, iso3: str, years: Sequence[int], batch_id: Optional[str], reason_for_others: str) -> int:
     """
     One Delta UPDATE: `batch_id` rows -> validity TRUE, every other currently valid row of the same
     (country, years) -> FALSE. With batch_id=None it only switches the valid rows off.
@@ -941,7 +940,7 @@ def _flip(kind: str, iso3: str, years: Sequence[int], batch_id: Optional[str], a
 
     def go():
         with be.session(write=True) as s:
-            params: Dict[str, Any] = {"iso": iso3, "now": utc_now_iso(), "actor": actor, "reason": reason_for_others}
+            params: Dict[str, Any] = {"iso": iso3, "now": utc_now_iso(), "reason": reason_for_others}
             ylist = _in_clause("y", years, params)
             if batch_id:
                 params["bid"] = batch_id
@@ -949,15 +948,14 @@ def _flip(kind: str, iso3: str, years: Sequence[int], batch_id: Optional[str], a
                     "UPDATE %(t)s SET "
                     "validity = CASE WHEN batch_id = :bid THEN TRUE ELSE FALSE END, "
                     "deactivated_at = CASE WHEN batch_id = :bid THEN NULL ELSE %(now)s END, "
-                    "deactivated_by = CASE WHEN batch_id = :bid THEN NULL ELSE :actor END, "
-                    "deactivation_reason = CASE WHEN batch_id = :bid THEN NULL ELSE :reason END, "
+                                        "deactivation_reason = CASE WHEN batch_id = :bid THEN NULL ELSE :reason END, "
                     "replaced_by = CASE WHEN batch_id = :bid THEN NULL ELSE :bid END "
                     "WHERE (batch_id = :bid AND year IN (%(y)s)) OR (validity = TRUE AND country_iso3 = :iso AND year IN (%(y)s))"
                     % {"t": table_fqn(kind), "now": s.ts("now"), "y": ylist}
                 )
             else:
                 sql = (
-                    "UPDATE %(t)s SET validity = FALSE, deactivated_at = %(now)s, deactivated_by = :actor, "
+                    "UPDATE %(t)s SET validity = FALSE, deactivated_at = %(now)s, "
                     "deactivation_reason = :reason "
                     "WHERE validity = TRUE AND country_iso3 = :iso AND year IN (%(y)s)"
                     % {"t": table_fqn(kind), "now": s.ts("now"), "y": ylist}
@@ -969,7 +967,7 @@ def _flip(kind: str, iso3: str, years: Sequence[int], batch_id: Optional[str], a
     return n
 
 
-def save(kind: str, df: pd.DataFrame, actor: str, replace: bool = False, skip_identical: bool = True,
+def save(kind: str, df: pd.DataFrame, replace: bool = False, skip_identical: bool = True,
          progress: Optional[Callable[[int, int], None]] = None) -> Dict[str, Any]:
     """
     Persist a tagged batch.
@@ -1017,12 +1015,12 @@ def save(kind: str, df: pd.DataFrame, actor: str, replace: bool = False, skip_id
                          {"bid": batch_id}, cache=False)
     n_staged = int(counted["n"].iloc[0]) if len(counted) else 0
     if n_staged != expected:
-        _flip_discard(kind, batch_id, actor)
+        _flip_discard(kind, batch_id)
         raise StoreError(
             "Row count check failed for %s: expected %d rows, found %d. The partial upload was marked as discarded "
             "(validity stays FALSE) and the previous data is untouched." % (table_display_name(kind), expected, n_staged))
     try:
-        _flip(kind, iso3, years, batch_id, actor, C.REASON_REPLACED)
+        _flip(kind, iso3, years, batch_id, C.REASON_REPLACED)
     except StoreError as exc:
         raise StoreError(
             "The %d rows are staged in %s as batch %s (validity = FALSE) but could not be activated: %s. "
@@ -1032,16 +1030,16 @@ def save(kind: str, df: pd.DataFrame, actor: str, replace: bool = False, skip_id
     return report
 
 
-def _flip_discard(kind: str, batch_id: str, actor: str) -> None:
+def _flip_discard(kind: str, batch_id: str) -> None:
     be = _get_backend()
 
     def go():
         with be.session(write=True) as s:
             s.execute(
-                "UPDATE %s SET deactivated_at = %s, deactivated_by = :actor, deactivation_reason = :reason "
+                "UPDATE %s SET deactivated_at = %s, deactivation_reason = :reason "
                 "WHERE batch_id = :bid AND validity = FALSE AND deactivated_at IS NULL"
                 % (table_fqn(kind), s.ts("now")),
-                {"now": utc_now_iso(), "actor": actor, "reason": C.REASON_DISCARDED, "bid": batch_id})
+                {"now": utc_now_iso(), "reason": C.REASON_DISCARDED, "bid": batch_id})
 
     try:
         _with_retry(go, what="Discarding a staged batch")
@@ -1050,7 +1048,7 @@ def _flip_discard(kind: str, batch_id: str, actor: str) -> None:
     invalidate_cache()
 
 
-def soft_delete(kind: str, iso3: str, years: Sequence[int], batch_id: str, actor: str) -> int:
+def soft_delete(kind: str, iso3: str, years: Sequence[int], batch_id: str) -> int:
     """Mark the current rows of (country, years) as validity = FALSE ("deleted") if `batch_id` is still the valid one."""
     ensure_tables()
     cur = active_scopes(kind, iso3, years)
@@ -1058,10 +1056,10 @@ def soft_delete(kind: str, iso3: str, years: Sequence[int], batch_id: str, actor
         return 0
     if set(cur["batch_id"]) != {batch_id}:
         raise StoreError("The data changed in the meantime (another version is now active). Refresh and try again.")
-    return _flip(kind, iso3, years, None, actor, C.REASON_DELETED)
+    return _flip(kind, iso3, years, None, C.REASON_DELETED)
 
 
-def restore(kind: str, iso3: str, batch_id: str, actor: str, years: Optional[Sequence[int]] = None) -> int:
+def restore(kind: str, iso3: str, batch_id: str, years: Optional[Sequence[int]] = None) -> int:
     """Make a previously replaced / deleted batch the valid one again (all its years, or only `years`)."""
     ensure_tables()
     versions = list_versions(kind, iso3)
@@ -1075,10 +1073,10 @@ def restore(kind: str, iso3: str, batch_id: str, actor: str, years: Optional[Seq
         raise StoreError("A discarded or incomplete batch cannot be restored.")
     if status == {STATUS_ACTIVE}:
         return 0
-    return _flip(kind, iso3, mine["year"].astype(int).tolist(), batch_id, actor, C.REASON_REPLACED)
+    return _flip(kind, iso3, mine["year"].astype(int).tolist(), batch_id, C.REASON_REPLACED)
 
 
-def discard_staged(kind: str, batch_id: str, actor: str) -> None:
+def discard_staged(kind: str, batch_id: str) -> None:
     """Soft-discard a batch that was staged but never activated."""
     ensure_tables()
-    _flip_discard(kind, batch_id, actor)
+    _flip_discard(kind, batch_id)

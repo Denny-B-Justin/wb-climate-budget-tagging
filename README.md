@@ -15,7 +15,7 @@ The tagging engine is the original code, **copied without any change** to the pr
 (without the Streamlit-only modules). Everything else lives in `src/` and the Dash layer.
 
 ```
-app.py            Dash object, page frame, routing (?page=tag|dashboard|data|methodologies)
+app.py            Dash object, page frame, routing (?page=home|tag|dashboard|data|methodologies)
 callbacks.py      all callbacks
 pages.py          layouts            methodology.py   the Methodologies page
 src/constants.py  names, table schemas, colours, country list, environment-variable names

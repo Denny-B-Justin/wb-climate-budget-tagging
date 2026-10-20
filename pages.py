@@ -3,6 +3,7 @@ pages.py
 --------
 Layout builders for the four pages. Layouts only describe structure and ids; behaviour lives in callbacks.py.
 
+    ?page=home           Overview: a short introduction and the Launch Tool button
     ?page=tag            Tag a budget: metadata -> upload -> run -> review -> save to Unity Catalog
     ?page=dashboard      Cross-country view of the *valid* data in Unity Catalog
     ?page=data           Versions in the tables; soft-delete / restore / download
@@ -36,18 +37,33 @@ def graph(fig: Any) -> dcc.Graph:
 
 
 # ══════════════════════════════════════════════════════════════════════════
+# Overview (landing page)
+# ══════════════════════════════════════════════════════════════════════════
+
+def home_layout(map_url: str) -> html.Section:
+    return html.Section(className="hero", style={"--hero-map": "url(%s)" % map_url}, children=html.Div(className="hero-inner", children=[
+        html.P("Climate budget tagging", className="eyebrow"),
+        html.H1("Find the climate share of a government budget", className="hero-title"),
+        html.P("The Climate Budget Tagging Tool tags every budget line against the Rio Markers and the EU Taxonomy. "
+               "Upload a budget, review the tags, and compare countries side by side.", className="hero-lede"),
+        html.Div(className="hero-actions", children=[
+            dcc.Link("Launch Tool", href="?page=%s" % C.PAGE_TAG, className="btn btn-primary btn-lg"),
+            dcc.Link("Dashboard", href="?page=%s" % C.PAGE_DASHBOARD, className="btn btn-teal btn-lg"),
+            dcc.Link("How it works", href="?page=%s" % C.PAGE_METHODOLOGY, className="btn btn-ghost btn-lg"),
+        ]),
+    ]))
+
+
+# ══════════════════════════════════════════════════════════════════════════
 # Tag page
 # ══════════════════════════════════════════════════════════════════════════
 
-def metadata_card(actor: str) -> html.Div:
+def metadata_card() -> html.Div:
     return u.step_card(1, "About the budget", "This identifies the data in the global tables: country and year decide what is replaced.", [
         html.Div(className="form-grid", children=[
             u.field("Country", dcc.Dropdown(id="meta-country", options=C.COUNTRY_OPTIONS, placeholder="Search a country…",
                                             searchable=True, clearable=True, className="select",
                                             persistence=True, persistence_type="session"), required=True),
-            u.field("Prepared by", dcc.Input(id="meta-by", type="text", value=actor or None, maxLength=120, className="input",
-                                             placeholder="Your name or e-mail", persistence=True, persistence_type="session"),
-                    "Stored with every row (audit trail).", required=True),
             u.field("Currency", dcc.Input(id="meta-currency", type="text", maxLength=30, className="input",
                                           placeholder="e.g. ZMW or 'USD millions'", persistence=True, persistence_type="session"),
                     "Free text; shares do not depend on it."),
@@ -138,7 +154,7 @@ def options_card() -> html.Div:
     ], sid="step-run")
 
 
-def tag_layout(actor: str, job_id: Optional[str], upload: Optional[Dict[str, Any]]) -> html.Div:
+def tag_layout(job_id: Optional[str], upload: Optional[Dict[str, Any]]) -> html.Div:
     """Tag page. If a job already exists in this browser session its state (progress / results / save) is restored."""
     tag_status = P.read_status(job_id, "tag") if job_id else {"state": "idle"}
     save_status = P.read_status(job_id, "save") if job_id else {"state": "idle"}
@@ -156,7 +172,7 @@ def tag_layout(actor: str, job_id: Optional[str], upload: Optional[Dict[str, Any
             html.Ol(className="stepper", children=[html.Li([html.Span(str(i), className="step-n"), html.Div([html.Strong(a), html.Span(" " + b)])])
                                                     for i, (a, b) in enumerate(steps, start=1)]),
             html.Div(className="stack", children=[
-                metadata_card(actor), upload_card(upload), options_card(),
+                metadata_card(), upload_card(upload), options_card(),
                 html.Div(id="tag-progress", children=progress_content(tag_status, tag_state)),
                 html.Div(id="results-region", children=results),
                 html.Div(id="save-region", children=save_status_content(save_status, save_state)),
@@ -175,7 +191,7 @@ def tag_layout(actor: str, job_id: Optional[str], upload: Optional[Dict[str, Any
 def progress_content(status: Dict[str, Any], state: Optional[str] = None) -> Any:
     state = state or P.effective_state(status)
     if state == "running":
-        return u.step_card(3, "Tagging in progress", "You can leave this page open; it keeps running on the server.", [
+        return u.step_card(3, "Tagging in progress", "Loading; it can take a while.", [
             u.progress_bar(int(status.get("done", 0)), int(status.get("total", 0)), status.get("phase") or "Working…")], cls="card-live")
     if state == "stalled":
         return u.notice("error", "The tagging job stopped reporting progress (the app may have restarted). Run it again.", "Job interrupted")
@@ -293,7 +309,7 @@ def plan_table(plans: Dict[str, pd.DataFrame]) -> Any:
             text, tone, why = labels[r["action"]]
             old = ""
             if r["action"] != q.ACTION_NEW:
-                old = "Current: %s lines saved %s by %s" % (u.fmt_int(r["old_lines"]), u.fmt_dt(r["old_uploaded_at"]), r["old_uploaded_by"] or "?")
+                old = "Current: %s lines saved %s" % (u.fmt_int(r["old_lines"]), u.fmt_dt(r["old_uploaded_at"]))
             rows.append(html.Tr([html.Td(C.KIND_LABELS[kind]), html.Td(str(int(r["year"]))), html.Td(u.fmt_int(r["new_lines"])),
                                  html.Td(u.chip(text, tone)), html.Td([why, html.Div(old, className="muted")] if old else why)]))
     return html.Div(className="doc-table-wrap", children=html.Table(className="doc-table", children=[
@@ -359,7 +375,7 @@ def dashboard_layout() -> html.Div:
 # Data in Unity Catalog
 # ══════════════════════════════════════════════════════════════════════════
 
-def data_layout(actor: str) -> html.Div:
+def data_layout() -> html.Div:
     return html.Div([
         u.page_intro("Data in Unity Catalog",
                      "Every saved version of every country-year. Only rows with validity = TRUE are 'current'; older versions are kept so they "
@@ -415,4 +431,4 @@ def not_found_layout() -> html.Div:
     return html.Div(className="notfound", children=[
         html.H1("Page not found", className="page-title"),
         html.P("That page does not exist.", className="page-lede"),
-        dcc.Link("Back to the tagging tool", href="?page=%s" % C.DEFAULT_PAGE, className="btn btn-primary")])
+        dcc.Link("Back to the overview", href="?page=%s" % C.DEFAULT_PAGE, className="btn btn-primary")])

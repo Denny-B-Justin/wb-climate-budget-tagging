@@ -9,7 +9,7 @@ Production:       gunicorn app:server           (Posit Connect / Databricks Apps
 Structure
   app.py            this file: the Dash object, page frame and routing
   callbacks.py      every callback
-  pages.py          layouts (Tag, Dashboard, Data, Methodologies)
+  pages.py          layouts (Overview, Tag, Dashboard, Data, Methodologies)
   methodology.py    the Methodologies page
   src/constants.py  names, schemas, colours, country list, environment variable names
   src/utils.py      formatting, charts and reusable components
@@ -18,7 +18,7 @@ Structure
   green_budget_tagger*.py, rio_marker_tagger.py, eu_taxonomy_tagger.py, shared/
                     the original tagging engine - copied unchanged
 
-Routing is query-string based (?page=tag|dashboard|data|methodology) so it also works behind Posit Connect,
+Routing is query-string based (?page=home|tag|dashboard|data|methodologies) so it also works behind Posit Connect,
 which serves apps below a sub-path.
 """
 
