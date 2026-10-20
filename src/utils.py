@@ -17,7 +17,7 @@ import json
 import math
 import os
 from datetime import datetime, timezone
-from typing import Any, Dict, Iterable, List, Optional, Sequence
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
@@ -186,7 +186,7 @@ def to_csv_bytes(df: pd.DataFrame) -> bytes:
 # Plotly figures
 # ══════════════════════════════════════════════════════════════════════════
 
-_GRID = "#E6EBF2"
+_GRID = "#E4EBE6"
 _AXIS_FONT = dict(family=C.FONT_STACK, size=12, color=C.INK_SOFT)
 _HOVER = dict(bgcolor="white", font_size=13, font_family=C.FONT_STACK, align="left", bordercolor=C.LINE)
 
@@ -239,6 +239,56 @@ def fig_rio_levels(summary: Dict[str, Any]) -> go.Figure:
     fig.update_xaxes(range=[0, 1], tickformat=".0%", title="Share of %s" % unit)
     fig.update_yaxes(visible=False)
     return _base_layout(fig, 170, legend=True, legend_top=True, margin=dict(l=8, r=16, t=30, b=8))
+
+
+def fig_donut(slices: Sequence[Tuple[str, float, str]], unit: str = "amount", height: int = 300) -> go.Figure:
+    """Donut of (label, value, colour) slices in the given order; every slice is labelled with its name and share."""
+    slices = [(l, float(v), c) for l, v, c in slices if not is_missing(v) and float(v) > 0]
+    if not slices:
+        return empty_figure("Nothing to show", height)
+    fig = go.Figure(go.Pie(
+        labels=[l for l, _, _ in slices], values=[v for _, v, _ in slices], sort=False, direction="clockwise", hole=0.58,
+        marker=dict(colors=[c for _, _, c in slices], line=dict(color="white", width=2)),
+        texttemplate="%{label}<br>%{percent:.0%}", textposition="outside", textfont=dict(size=12, color=C.INK, family=C.FONT_STACK),
+        hovertemplate="%%{label}<br>%%{percent:.1%%} of %s<extra></extra>" % unit))
+    fig = _base_layout(fig, height, legend=True, margin=dict(l=40, r=40, t=56, b=32))
+    fig.update_layout(legend=dict(orientation="h", x=0.5, xanchor="center", y=1.12, yanchor="bottom"))
+    return fig
+
+
+def fig_rio_donut(principal: float, significant: float, unit: str = "amount", height: int = 300) -> go.Figure:
+    """Principal / significant / not targeted as shares of the whole (inputs are shares 0..1)."""
+    rest = max(0.0, 1.0 - (principal or 0) - (significant or 0))
+    return fig_donut([("%s (2)" % C.RIO_LABELS[2], principal, C.RIO_COLORS[2]),
+                      ("%s (1)" % C.RIO_LABELS[1], significant, C.RIO_COLORS[1]),
+                      (C.RIO_LABELS[0], rest, C.RIO_COLORS[0])], unit, height)
+
+
+def fig_tag_donut(green: float, brown: float, other: Optional[Dict[str, float]] = None, unit: str = "amount",
+                  height: int = 300) -> go.Figure:
+    """Green / brown / (unclear) / neutral shares. Without `other`, everything that is not green or brown is neutral."""
+    if other is None:
+        other = {"NEUTRAL": max(0.0, 1.0 - (green or 0) - (brown or 0))}
+    parts = [("GREEN", green), ("BROWN", brown)] + [(t, other.get(t, 0.0)) for t in ("AMBIGUOUS", "NEUTRAL")]
+    return fig_donut([(C.TAG_LABELS[t], v, C.TAG_COLORS[t]) for t, v in parts], unit, height)
+
+
+def fig_green_brown(df: pd.DataFrame) -> go.Figure:
+    """Per country: green share and brown share as two bars side by side (fixed semantic colours, legend on top)."""
+    if df is None or df.empty:
+        return empty_figure()
+    d = df.sort_values("green_share")
+    fig = go.Figure()
+    for col, name, colour in (("brown_share", "Brown", C.BROWN_COLOR), ("green_share", "Green", C.GREEN_COLOR)):
+        fig.add_trace(go.Bar(
+            y=d["country"], x=d[col], orientation="h", name=name, marker=_bar_marker(colour),
+            text=[fmt_pct(v) for v in d[col]], textposition="outside", cliponaxis=False,
+            textfont=dict(color=C.INK, size=11, family=C.FONT_STACK),
+            hovertemplate="%%{y}<br>%s: %%{x:.1%%}<extra></extra>" % name))
+    fig.update_layout(barmode="group", bargap=0.35, bargroupgap=0.12, legend=dict(traceorder="reversed"))
+    top = float(max(d["green_share"].max(), d["brown_share"].max()) or 0)
+    fig.update_xaxes(tickformat=".0%", title="Share of the budget", range=[0, max(top * 1.2, 0.05)])
+    return _base_layout(fig, max(200, 52 * len(d) + 110), legend=True, legend_top=True, margin=dict(l=8, r=48, t=32, b=8))
 
 
 def fig_bar_h(labels: Sequence[str], values: Sequence[float], title: str = "", pct: bool = False,
@@ -299,7 +349,7 @@ def fig_methods(counts: Dict[str, int], title: str = "Unique classifications") -
     if not counts:
         return empty_figure()
     items = sorted(counts.items(), key=lambda kv: kv[1], reverse=True)
-    return fig_bar_h([k for k, _ in items], [v for _, v in items], title=title, color=C.INDIGO)
+    return fig_bar_h([k for k, _ in items], [v for _, v in items], title=title, color="#5E7A6B")
 
 
 def fig_share_trend(df: pd.DataFrame, value_col: str, order: Sequence[str], names: Dict[str, str],
@@ -385,10 +435,14 @@ def icon(name: str, cls: str = "") -> html.Span:
 
 def build_header(current_page: str, wb_logo: Optional[str] = None) -> html.Header:
     links = []
-    short = {C.PAGE_DATA: "Data"}                              # phone widths: the long label would push 'Methodologies' off screen
+    short = {C.PAGE_DATA: "Download"}                          # phone widths: the long label would push 'Methodologies' off screen
     for key, label, href in C.PAGES:
         text = [html.Span(label, className="lbl-full"), html.Span(short[key], className="lbl-short")] if key in short else label
-        links.append(dcc.Link(text, href=href, className="nav-link" + (" is-current" if key == current_page else "")))
+        cls = "nav-link" + (" is-current" if key == current_page else "")
+        if key == C.PAGE_METHODOLOGY:                          # reference reading: opens in its own browser tab
+            links.append(html.A([text, icon("external")], href=href, target="_blank", rel="noopener", className=cls))
+        else:
+            links.append(dcc.Link(text, href=href, className=cls))
     links.append(html.A(["%s" % C.SUITE_NAME, icon("external")], href=C.SUITE_URL, target="_blank",
                         rel="noopener noreferrer", className="nav-link"))
     return html.Header(className="app-header", children=html.Div(className="app-header-inner", children=[
@@ -406,8 +460,6 @@ def build_footer(wb_logo: Optional[str] = None) -> html.Footer:
                    "public investment and asset management."),
         ]),
         html.Div(className="footer-links", children=[
-            html.Div(id="storage-badge", className="storage-badge", children="Checking storage…"),
-            dcc.Interval(id="badge-tick", interval=300, max_intervals=1),
             html.A("pim-pam.net", href=C.SUITE_URL, target="_blank", rel="noopener noreferrer"),
         ]),
     ]))
@@ -511,13 +563,13 @@ def table(df: pd.DataFrame, table_id: Any, page_size: int = C.RESULT_TABLE_PAGE_
         row_selectable=selectable or False, selected_rows=[], cell_selectable=False,
         style_as_list_view=True, css=[{"selector": ".dash-spreadsheet-container", "rule": "font-family: inherit;"}],
         style_table={"overflowX": "auto"},
-        style_header={"fontFamily": C.FONT_STACK, "fontWeight": "600", "backgroundColor": "#F3F6FA", "color": C.INK,
+        style_header={"fontFamily": C.FONT_STACK, "fontWeight": "600", "backgroundColor": "#F3F7F4", "color": C.INK,
                       "border": "0", "borderBottom": "1px solid " + C.LINE, "fontSize": "12px", "textTransform": "none"},
         style_cell={"fontFamily": C.FONT_STACK, "fontSize": "13px", "color": C.INK, "padding": "8px 10px",
-                    "textAlign": "left", "border": "0", "borderBottom": "1px solid #E6EBF2", "maxWidth": "320px",
+                    "textAlign": "left", "border": "0", "borderBottom": "1px solid #E4EBE6", "maxWidth": "320px",
                     "overflow": "hidden", "textOverflow": "ellipsis", "whiteSpace": "nowrap", "backgroundColor": "white"},
-        style_data_conditional=list(extra_conditional) + [{"if": {"state": "active"}, "backgroundColor": "#EDF2F9", "border": "0"},
-                                                          {"if": {"state": "selected"}, "backgroundColor": "#E1E8F8", "border": "0"}],
+        style_data_conditional=list(extra_conditional) + [{"if": {"state": "active"}, "backgroundColor": "#EDF4EF", "border": "0"},
+                                                          {"if": {"state": "selected"}, "backgroundColor": "#DCEFE2", "border": "0"}],
         tooltip_data=[{c: {"value": str(v) if v is not None else "", "type": "text"} for c, v in row.items()}
                       for row in data.head(500).to_dict("records")],
         tooltip_duration=None, **kwargs)

@@ -5,7 +5,7 @@ objectives, lets the analyst review the result, and saves it to two **global Uni
 
 * **Tag a budget** – enter metadata (country, year, source, who prepared it), upload an Excel/CSV file, match columns, run the tagging, review, save.
 * **Dashboard** – cross-country view of the *current* data (`validity = TRUE`).
-* **Data in Unity Catalog** – every saved version; view lines, download CSV, soft-delete, restore, discard interrupted saves.
+* **Saved data** – every saved version; view lines, download CSV, remove from the dashboard, bring back, discard interrupted saves.
 * **Methodologies** – the full written methodology (decision cascade, indicators, keyword lists, COFOG table, storage rules, limits). Worked examples
   on that page are produced live by the same tagger code.
 
@@ -20,7 +20,7 @@ callbacks.py      all callbacks
 pages.py          layouts            methodology.py   the Methodologies page
 src/constants.py  names, table schemas, colours, country list, environment-variable names
 src/utils.py      formatting, charts, reusable components, Excel export
-src/queries.py    ALL storage access (Unity Catalog via Databricks SQL; SQLite for development and tests)
+src/queries.py    ALL storage access (Unity Catalog via Databricks SQL; the tests use a SQLite stand-in)
 src/pipeline.py   reading uploads, cleaning, running the taggers, background jobs
 assets/           style.css, self-hosted Fira Sans (SIL OFL), logo, favicon
 sql/              create_tables.sql (generated)      scripts/   print_ddl.py, write_manifest.py
@@ -34,8 +34,8 @@ pip install -r requirements.txt
 python app.py                  # http://127.0.0.1:8050  (set PORT to change)
 ```
 
-With no `DATABRICKS_*` variables the app uses a **local SQLite demo store** and shows an amber *Demo storage* badge in the footer.
-Copy `.env.example` to `.env` and fill it in to write to Unity Catalog. A sample file is in `sample_data/sample_input_budget.xlsx`.
+Data is stored in Unity Catalog only. Copy `.env.example` to `.env` and fill it in; if any credential is missing the app still starts,
+but logs `STORAGE NOT CONFIGURED` with the missing variable names (users only see a generic "data service is not available" message). A sample file is in `sample_data/sample_input_budget.xlsx`.
 
 ## Storage model (answer to "one table per country?")
 
@@ -71,7 +71,6 @@ GROUP BY country_iso3, year;
 |---|---|
 | `DATABRICKS_SERVER_HOSTNAME` (or `DATABRICKS_HOST`), `DATABRICKS_HTTP_PATH`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET` | Same names as the Country Benchmarking Dashboard, so one service principal serves both. `DATABRICKS_TOKEN` works for local development. |
 | `CBT_CATALOG`, `CBT_SCHEMA` | Where the two tables live (no defaults in code; `.env.example` shows `prd_mega` / `sgpbpi163`). |
-| `CBT_BACKEND` | `databricks` or `sqlite`. Unset: Databricks if any `DATABRICKS_*` variable is set (then all required ones must be), else SQLite. |
 | `CBT_AUTO_CREATE_TABLES` | `true` (default) creates missing tables and adds missing columns at start-up. |
 | `CBT_INSERT_MODE`, `CBT_INSERT_CHUNK_ROWS` | `json` (default; one parameter per statement, thousands of rows each) or `values` (portable multi-row VALUES). |
 | `CBT_ADMIN_USERS` | Comma-separated e-mails allowed to soft-delete/restore. Empty = every signed-in user. The user is read from `X-Forwarded-Email` / Posit Connect credentials headers. |

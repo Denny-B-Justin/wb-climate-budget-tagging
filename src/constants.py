@@ -48,7 +48,7 @@ PAGES = [
     (PAGE_HOME, "Overview", "?page=home"),
     (PAGE_TAG, "Tag a budget", "?page=tag"),
     (PAGE_DASHBOARD, "Dashboard", "?page=dashboard"),
-    (PAGE_DATA, "Data in Unity Catalog", "?page=data"),
+    (PAGE_DATA, "Download data", "?page=data"),
     (PAGE_METHODOLOGY, "Methodologies", "?page=methodologies"),
 ]
 DEFAULT_PAGE = PAGE_HOME
@@ -68,8 +68,6 @@ ENV_TOKEN = "DATABRICKS_TOKEN"                  # personal access token (local d
 
 ENV_CATALOG = "CBT_CATALOG"                     # Unity Catalog catalog that holds the tables
 ENV_SCHEMA = "CBT_SCHEMA"                       # ... and the schema
-ENV_BACKEND = "CBT_BACKEND"                     # "databricks" | "sqlite"   (default: auto)
-ENV_SQLITE_PATH = "CBT_SQLITE_PATH"             # local demo store (default ./data/cbt_demo.sqlite)
 ENV_AUTO_CREATE = "CBT_AUTO_CREATE_TABLES"      # "true" (default) creates missing tables on start
 ENV_INSERT_MODE = "CBT_INSERT_MODE"             # "json" (default, fast) | "values" (portable fallback)
 ENV_INSERT_CHUNK = "CBT_INSERT_CHUNK_ROWS"
@@ -239,28 +237,32 @@ RESULT_TABLE_PAGE_SIZE = 15
 # Design tokens (mirrors the CBD app / pim-pam.net: assets/style.css holds the CSS)
 # ══════════════════════════════════════════════════════════════════════════
 
-NAVY = "#0B2B4B"
-NAVY_DEEP = "#08213A"
-INDIGO = "#2E3C8F"
-TEAL = "#64CBD6"
-ORANGE = "#F26B23"
-INK = "#14243A"
-INK_SOFT = "#44546A"
-INK_MUTE = "#66768C"
-LINE = "#D5DCE6"
-NO_DATA_COLOR = "#C9D1DC"
+NAVY = "#0F3B2A"                # dark green (the name is kept so the CSS tokens and Python stay in step)
+NAVY_DEEP = "#0A2C1F"
+INDIGO = "#1B6B3A"              # brand green for controls and single-series bars
+TEAL = "#8ED1A3"
+ORANGE = "#F2B33D"
+INK = "#14291F"
+INK_SOFT = "#42564C"
+INK_MUTE = "#637569"
+LINE = "#D3DDD6"
+NO_DATA_COLOR = "#C5CCC6"
 FONT_STACK = "'Fira Sans', 'Segoe UI', Arial, sans-serif"
 
-# Chart colours follow the dataviz rules (validated with scripts/validate_palette.js on a white surface):
-#   * Rio levels are ORDINAL - one hue, light -> dark; "not targeted" recedes as neutral grey.
-#   * Anything that must tell series apart uses the validated categorical order below (fixed order, never cycled;
-#     first six slots: worst adjacent CVD dE 9.1, normal-vision dE 19.6).
-#   * Single-series bars use the brand indigo.
-RIO_COLORS = {0: NO_DATA_COLOR, 1: "#5598E7", 2: "#184F95"}
-BROWN_COLOR = "#8C5A3C"
+# Chart colours follow the dataviz rules (validated with the dataviz skill's validate_palette.js on a white surface):
+#   * Green and brown carry MEANING and are used for nothing else. The pair stays distinct for colour-blind readers
+#     (deuteranopia dE 14.6, normal vision dE 24.8); every pie and stacked bar also carries direct text labels.
+#   * Rio levels are ORDINAL - one green hue, light -> dark; "not targeted" recedes as neutral grey.
+#   * Countries on the trend chart take the validated categorical order (fixed order, never cycled).
+GREEN_COLOR = "#2E9E5B"
+BROWN_COLOR = "#8B4513"
+AMBIGUOUS_COLOR = "#D9A100"
+NEUTRAL_COLOR = NO_DATA_COLOR
+TAG_COLORS = {"GREEN": GREEN_COLOR, "BROWN": BROWN_COLOR, "AMBIGUOUS": AMBIGUOUS_COLOR, "NEUTRAL": NEUTRAL_COLOR}
+TAG_LABELS = {"GREEN": "Green", "BROWN": "Brown", "AMBIGUOUS": "Unclear", "NEUTRAL": "Neutral"}
+RIO_COLORS = {0: NO_DATA_COLOR, 1: "#4FAE6F", 2: "#1B6B3A"}
 CATEGORICAL = ["#2A78D6", "#EB6834", "#1BAF7A", "#EDA100", "#E87BA4", "#008300", "#6250D6", "#E34948"]
-EU_COLORS = {k: CATEGORICAL[i] for i, k in enumerate(EU_OBJECTIVES)}
-SEQUENTIAL = ["#E6EEFA", "#B7D3F6", "#86B6EF", "#5598E7", "#2A78D6", "#184F95", "#0D366B"]   # blue 100 -> 700
+SEQUENTIAL = ["#EAF6EE", "#C3E6CD", "#93D0A6", "#5DB57D", "#2E9E5B", "#1B6B3A", "#0E4526"]   # green 100 -> 700
 MAX_COMPARE_COUNTRIES = 6
 
 # ══════════════════════════════════════════════════════════════════════════

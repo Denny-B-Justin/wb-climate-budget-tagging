@@ -597,6 +597,7 @@ def summarize(kind: str, df: pd.DataFrame) -> Dict[str, Any]:
         out["brown_share"] = _share(float(basis[brown].sum()), total)
         out["tagged_lines"] = int(green.sum())
         out["by_objective"] = {k: float(basis[df[C.EU_FLAG_COLUMNS[k]]].sum()) for k in C.EU_OBJECTIVES}
+        out["by_tag"] = {t: float(basis[df["climate_tag"] == t].sum()) for t in C.TAG_COLORS}
         out["objective_lines"] = {k: int(df[C.EU_FLAG_COLUMNS[k]].sum()) for k in C.EU_OBJECTIVES}
     out["by_method"] = df["tag_method"].value_counts().to_dict()
     return out

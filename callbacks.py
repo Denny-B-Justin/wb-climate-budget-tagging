@@ -59,7 +59,7 @@ def _job_id(job: Optional[Dict[str, Any]]) -> Optional[str]:
 
 
 # ══════════════════════════════════════════════════════════════════════════
-# Routing, title, storage badge
+# Routing and title
 # ══════════════════════════════════════════════════════════════════════════
 
 @callback(Output("page-content", "children"), Input("url", "search"),
@@ -81,17 +81,6 @@ def render_page(search, job, upload):
     else:
         return u.page_shell("", pages.not_found_layout(), logo)
     return u.page_shell(page, body, logo)
-
-
-@callback(Output("storage-badge", "children"), Output("storage-badge", "className"),
-          Input("badge-tick", "n_intervals"))
-def storage_badge(_n):
-    h = q.health()
-    if not h["ok"]:
-        return [u.icon("info"), " Storage unavailable - ", h.get("error", "")[:180]], "storage-badge is-bad"
-    if h["demo"]:
-        return [u.icon("info"), " Demo storage (local SQLite) - not Unity Catalog"], "storage-badge is-demo"
-    return ["● ", h["label"]], "storage-badge is-ok"
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -269,12 +258,12 @@ def save_flow(n_save, n_cancel, n_confirm, job, replace):
         intro: List[Any] = []
         if changed:
             intro.append(u.notice("warn", [
-                "Data for the same country and year already exists with different values."], "Replace existing data?"))  #If you continue, the old rows are kept but "marked ", html.Code("validity = FALSE"), " (soft-delete) and the new rows are saved as ", html.Code("validity = TRUE"), in one atomic step. You can restore the old version later.
+                "Data for the same country and year already exists with different values."], "Replace existing data?"))
         elif nothing:
             intro.append(u.notice("info", "Everything in this file is already stored with identical values. Nothing needs to be written.",
                                   "Already saved"))
         else:
-            intro.append(u.notice("info", "New country-years will be added to the dashboard; No conflicts found.")) #New country-years are appended with validity = TRUE; nothing existing is touched.
+            intro.append(u.notice("info", "New country-years will be added to the dashboard; No conflicts found."))
         label = "Replace and save" if changed else ("Close" if nothing else "Save")
         return False, [*intro, pages.plan_table(plans)], label, bool(changed), no_update, no_update
     # confirm
@@ -297,7 +286,7 @@ def poll_save(_n, job):
     if state == "running":
         return pages.save_status_content(status, state), False
     if state == "needs_confirmation":
-        return u.notice("warn", "The data for this country and year changed while you were reviewing. Press 'Save to Unity Catalog…' again "
+        return u.notice("warn", "The data for this country and year changed while you were reviewing. Press 'Save…' again "
                                 "to see the current situation.", "Please review again"), True
     return pages.save_status_content(status, state), True
 
@@ -343,9 +332,9 @@ def render_dashboard(kind, basis, year, countries):
     try:
         agg = q.aggregates(kind)
     except q.StoreError as exc:
-        return u.notice("error", str(exc), "Could not read the tables")
+        return u.notice("error", str(exc), "The dashboard is not available")
     if agg.empty:
-        return u.empty_state("No data yet", "Nothing has been saved to the %s table. Tag a budget and save it, and it appears here." % C.KIND_LABELS[kind])
+        return u.empty_state("No data yet", "Nothing has been saved for %s yet. Tag a budget and save it, and it appears here." % C.KIND_LABELS[kind])
     df = u.add_shares(kind, agg, basis or "amount")
     names = df.drop_duplicates("country_iso3").set_index("country_iso3")["country"].to_dict()
     sel = df.sort_values("year").groupby("country_iso3").tail(1) if year in (None, "latest") else df[df["year"] == int(year)]
@@ -356,9 +345,9 @@ def render_dashboard(kind, basis, year, countries):
     n_lines_fallback = (df["share_basis"] == "lines").any() if (basis or "amount") == "amount" else False
     blocks: List[Any] = [
         u.kpi_strip([
-            u.kpi("Countries", u.fmt_int(df["country_iso3"].nunique()), "with valid data"),
-            u.kpi("Country-years", u.fmt_int(len(df)), "current versions"),
-            u.kpi("Budget lines", u.fmt_int(df["n_lines"].sum()), "valid rows"),
+            u.kpi("Countries", u.fmt_int(df["country_iso3"].nunique()), "with saved data"),
+            u.kpi("Years of data", u.fmt_int(len(df)), "country-years in total"),
+            u.kpi("Budget lines", u.fmt_int(df["n_lines"].sum()), "tagged"),
             u.kpi("Highest %s" % ("Rio-weighted share" if kind == C.KIND_RIO else "green share"), u.fmt_pct(best[col]),
                   "%s, %d" % (best["country"], best["year"]), tone="primary")])]
     if n_lines_fallback:
@@ -366,10 +355,16 @@ def render_dashboard(kind, basis, year, countries):
     ref = C.RIO_TARGET_SHARE if kind == C.KIND_RIO else None
     year_note = "latest year per country" if year in (None, "latest") else str(year)
     chosen = [c for c in (countries or []) if c in names][:C.MAX_COMPARE_COUNTRIES]
-    bar = html.Div(className="chart-card", children=[
-        html.H3("%s by country" % _main_label(kind), className="card-title"), html.Div(year_note, className="muted"),
-        pages.graph(u.fig_bar_h(sel["country"].tolist(), sel[col].tolist(), pct=True, title=_main_label(kind),
-                                reference=ref, reference_label="10% reference" if ref else ""))])
+    if kind == C.KIND_RIO:
+        bar = html.Div(className="chart-card", children=[
+            html.H3("%s by country" % _main_label(kind), className="card-title"), html.Div(year_note, className="muted"),
+            pages.graph(u.fig_bar_h(sel["country"].tolist(), sel[col].tolist(), pct=True, title=_main_label(kind),
+                                    color=C.RIO_COLORS[2], reference=ref, reference_label="10% reference" if ref else ""))])
+    else:
+        bar = html.Div(className="chart-card", children=[
+            html.H3("Green and brown share by country", className="card-title"), html.Div(year_note, className="muted"),
+            pages.graph(u.fig_green_brown(sel))])
+    pies = _country_pies(kind, sel, chosen, year_note)
     trend = html.Div(className="chart-card" + ("" if kind == C.KIND_EU else " chart-wide"), children=[
         html.H3("%s over time" % _main_label(kind), className="card-title"),
         html.Div("Countries chosen above (colour follows the order of your selection)" if chosen else "Choose countries above to compare",
@@ -378,183 +373,113 @@ def render_dashboard(kind, basis, year, countries):
     cover = df.pivot_table(index="country", columns="year", values=col, aggfunc="first")
     coverage = html.Div(className="chart-card chart-wide", children=[
         html.H3("Coverage - what is saved", className="card-title"),
-        html.Div("Each cell is a saved country-year (%s); empty = no valid data" % _main_label(kind).lower(), className="muted"),
+        html.Div("Each cell is a saved country-year (%s); empty = no saved data" % _main_label(kind).lower(), className="muted"),
         pages.graph(u.fig_heatmap(cover, _main_label(kind)))])
     if kind == C.KIND_RIO:
         stack = html.Div(className="chart-card", children=[
             html.H3("Principal and significant share", className="card-title"), html.Div(year_note, className="muted"),
             pages.graph(u.fig_rio_stack(sel))])
-        cards = [bar, stack, trend, coverage]
+        cards = [bar, stack, pies, trend, coverage]
     else:
         z = sel.set_index("country")[[k + "_share" for k in C.EU_OBJECTIVES]]
         z.columns = [C.EU_LABELS[k] for k in C.EU_OBJECTIVES]
         objectives = html.Div(className="chart-card chart-wide", children=[
             html.H3("Objectives served, by country", className="card-title"), html.Div(year_note + " · share of amount", className="muted"),
             pages.graph(u.fig_heatmap(z, "Share"))])
-        cards = [bar, trend, objectives, coverage]
+        cards = [bar, trend, pies, objectives, coverage]
     blocks.append(html.Div(className="chart-grid", children=cards))
-    show = sel[["country", "year", "n_lines", col]].rename(columns={col: _main_label(kind)}).copy()
-    show[_main_label(kind)] = show[_main_label(kind)].map(u.fmt_pct)
-    blocks.append(html.Details(className="doc-details", children=[
-        html.Summary("View the numbers as a table"), u.table(show.sort_values("country"), "dash-table", page_size=15)]))
     return html.Div(blocks)
 
 
+def _country_pies(kind: str, sel: pd.DataFrame, chosen: List[str], year_note: str) -> html.Div:
+    """One donut per country chosen above (or the four largest), so each country's split can be read at a glance."""
+    isos = chosen or sel.sort_values("n_lines", ascending=False)["country_iso3"].head(4).tolist()
+    rows = sel.set_index("country_iso3")
+    tiles = []
+    for iso in isos:
+        if iso not in rows.index:
+            continue
+        r = rows.loc[iso]
+        unit = r["share_basis"]
+        fig = (u.fig_rio_donut(r["principal_share"], r["significant_share"], unit, height=300) if kind == C.KIND_RIO
+               else u.fig_tag_donut(r["green_share"], r["brown_share"], None, unit, height=300))
+        tiles.append(html.Div(className="pie-tile", children=[
+            html.Div("%s · %d" % (r["country"], int(r["year"])), className="pie-title"), pages.graph(fig)]))
+    title = "Rio Marker split per country" if kind == C.KIND_RIO else "Green, brown and neutral split per country"
+    return html.Div(className="chart-card chart-wide", children=[
+        html.H3(title, className="card-title"),
+        html.Div("%s · %s" % (year_note, "countries chosen above" if chosen else "choose countries above to change these"), className="muted"),
+        html.Div(className="pie-grid", children=tiles) if tiles else u.empty_state("No data", "Choose countries above.")])
+
+
 # ══════════════════════════════════════════════════════════════════════════
-# Data in Unity Catalog
+# Download data
 # ══════════════════════════════════════════════════════════════════════════
 
-_VERSION_COLS = ["kind", "country", "year", "status", "n_lines", "uploaded_at", "source_file", "batch_id",
-                 "deactivated_at"]
+def _download_columns(kind: str) -> Dict[str, str]:
+    """Stored column -> friendly CSV header. Anything not listed (ids, version flags, fingerprints) is left out."""
+    labels = {f.key: f.label for f in C.STD_FIELDS}
+    cols = {"country": "Country", "country_iso3": "Country code", "year": "Year"}
+    cols.update({f: labels.get(f, f) for f in C.LINE_TEXT_FIELDS})
+    cols.update({"amount": "Amount", "currency": "Currency", "climate_tag": "Climate tag", "confidence": "Confidence"})
+    if kind == C.KIND_RIO:
+        cols.update({"rio_marker": "Rio marker (0 none, 1 significant, 2 principal)", "rio_mitigation": "Rio marker - mitigation",
+                     "rio_adaptation": "Rio marker - adaptation"})
+    else:
+        cols.update({C.EU_FLAG_COLUMNS[k]: "EU objective - %s" % C.EU_LABELS[k] for k in C.EU_OBJECTIVES})
+        cols["eu_primary_objective"] = "Main EU objective"
+    cols.update({"tag_method": "Rule that decided", "rationale": "Reason", "data_source": "Data source", "notes": "Notes",
+                 "source_file": "Source file", "uploaded_at": "Saved on"})
+    return cols
 
 
-def _where_block() -> Any:
+@callback(Output("dl-countries", "options"), Output("dl-years", "options"), Output("dl-summary", "children"),
+          Output("dl-btn", "disabled"),
+          Input("dl-kind", "value"), Input("dl-countries", "value"), Input("dl-years", "value"))
+def download_summary(kind, countries, years):
+    kind = kind or C.KIND_RIO
     try:
-        rio, eu = q.table_display_name(C.KIND_RIO), q.table_display_name(C.KIND_EU)
-    except q.StoreError:
-        return None
-    return html.Div([
-        html.P(["Two global tables, one row per budget line: ", html.Code(rio), " and ", html.Code(eu), "."], className="doc-p"),
-        html.Pre(html.Code("-- current version of one country-year\nSELECT * FROM %s\nWHERE validity = TRUE AND country_iso3 = 'ZMB' AND year = 2024;\n\n"
-                           "-- every version ever saved, newest first\nSELECT batch_id, validity, uploaded_at, COUNT(*) AS lines\n"
-                           "FROM %s\nWHERE country_iso3 = 'ZMB'\nGROUP BY batch_id, validity, uploaded_at\nORDER BY uploaded_at DESC;" % (rio, rio)),
-                 className="doc-code")])
-
-
-@callback(
-    Output("data-kpis", "children"), Output("data-integrity", "children"), Output("data-table-wrap", "children"),
-    Output("data-country", "options"), Output("data-rows", "data"), Output("data-where", "children"),
-    Input("data-refresh", "n_clicks"), Input("data-country", "value"), Input("data-kind", "value"), Input("data-status", "value"),
-    Input("data-version", "data"))
-def load_versions(_n, country, kind, status, _ver):
-    if ctx.triggered_id == "data-refresh":
-        q.invalidate_cache()
-    try:
-        v = q.list_versions()
-        issues = q.integrity_issues()
+        agg = q.aggregates(kind)
     except q.StoreError as exc:
-        return u.notice("error", str(exc), "Could not read the tables"), None, None, [], [], None
-    if v.empty:
-        return None, None, u.empty_state("Nothing saved yet", "Versions appear here after you save a tagged budget."), [], [], _where_block()
-    opts = [{"label": n, "value": i} for i, n in sorted(v.drop_duplicates("country_iso3").set_index("country_iso3")["country"].items(), key=lambda kv: kv[1])]
-    act = v[v["status"] == q.STATUS_ACTIVE]
-    kpis = u.kpi_strip([
-        u.kpi("Countries with current data", u.fmt_int(act["country_iso3"].nunique())),
-        u.kpi("Current country-years", u.fmt_int(len(act.drop_duplicates(["country_iso3", "year"]))), "in either table"),
-        u.kpi("Current lines", u.fmt_int(act["n_lines"].sum()), "both tables together"),
-        u.kpi("Older / inactive versions", u.fmt_int((v["status"] != q.STATUS_ACTIVE).sum()))])
-    warn = None
-    if len(issues):
-        warn = u.notice("error", "More than one valid version exists for: " + "; ".join(
-            "%s %s %s" % (C.KIND_LABELS[r.kind], r.country_iso3, r.year) for r in issues.itertuples()) +
-            ". Restore the version you want as current to fix it.", "Integrity warning")
-    f = v
-    if country:
-        f = f[f["country_iso3"] == country]
-    if kind:
-        f = f[f["kind"] == kind]
-    if status:
-        f = f[f["status"] == status]
-    f = f.reset_index(drop=True)
-    show = f[_VERSION_COLS].copy()
-    show["kind"] = show["kind"].map(C.KIND_LABELS)
-    table = u.table(show, "data-table", page_size=12, sortable=False, selectable="single",
-                    style_data_conditional=[
-                        {"if": {"filter_query": '{status} = "active"', "column_id": "status"}, "color": "#1E7B4B", "fontWeight": "600"},
-                        {"if": {"filter_query": '{status} = "staged"', "column_id": "status"}, "color": "#9A5B00", "fontWeight": "600"},
-                        {"if": {"filter_query": '{status} = "deleted"', "column_id": "status"}, "color": "#B3261E", "fontWeight": "600"}]) if len(f) else \
-        u.empty_state("No versions match", "Change the filters above.")
-    rows = f[["kind", "country_iso3", "country", "year", "batch_id", "status", "n_lines"]].to_dict("records")
-    return kpis, warn, table, opts, rows, _where_block()
+        return [], [], u.notice("error", str(exc), "Download is not available"), True
+    if agg.empty:
+        return [], [], u.empty_state("Nothing saved yet", "Tagged budgets appear here after they are saved."), True
+    names = agg.drop_duplicates("country_iso3").set_index("country_iso3")["country"].to_dict()
+    c_opts = [{"label": n, "value": i} for i, n in sorted(names.items(), key=lambda kv: kv[1])]
+    pick = agg[agg["country_iso3"].isin(countries)] if countries else agg
+    y_opts = [{"label": str(y), "value": int(y)} for y in sorted(pick["year"].unique(), reverse=True)]
+    if years:
+        pick = pick[pick["year"].isin([int(y) for y in years])]
+    if pick.empty:
+        return c_opts, y_opts, u.notice("info", "There is no data for this choice. Try other countries or years."), True
+    per = (pick.groupby("country")
+               .agg(Years=("year", lambda s: u.year_span(sorted(s.unique()))), Lines=("n_lines", "sum"))
+               .reset_index().rename(columns={"country": "Country"}))
+    per["Lines"] = per["Lines"].map(u.fmt_int)
+    summary = html.Div([
+        html.P(["Ready to download: ", html.Strong("%s budget lines" % u.fmt_int(pick["n_lines"].sum())), " from ",
+                html.Strong("%d %s" % (len(per), "country" if len(per) == 1 else "countries")), " (%s)." % C.KIND_LABELS[kind]],
+               className="doc-p"),
+        u.table(per, "dl-table", page_size=10, sortable=False)])
+    return c_opts, y_opts, summary, False
 
 
-@callback(
-    Output("act-view", "disabled"), Output("act-download", "disabled"), Output("act-delete", "disabled"),
-    Output("act-restore", "disabled"), Output("act-discard", "disabled"), Output("data-selected-label", "children"),
-    Input("data-table", "selected_rows"), State("data-rows", "data"))
-def on_select(selected, rows):
-    if not selected or not rows or selected[0] >= len(rows):
-        return True, True, True, True, True, "Select a row to see what you can do with it."
-    r = rows[selected[0]]
-    ok = u.can_manage(_actor())
-    st = r["status"]
-    label = "Selected: %s · %s · %s · %s" % (C.KIND_LABELS[r["kind"]], r["country"], r["year"], st)
-    return (False, False, not (ok and st == "active"), not (ok and st in ("replaced", "deleted")), not (ok and st == "staged"), label)
-
-
-@callback(Output("data-lines", "children"), Input("act-view", "n_clicks"),
-          State("data-table", "selected_rows"), State("data-rows", "data"), prevent_initial_call=True)
-def view_lines(n, selected, rows):
-    if not n or not selected or not rows:
+@callback(Output("dl-file", "data"), Output("dl-msg", "children"), Input("dl-btn", "n_clicks"),
+          State("dl-kind", "value"), State("dl-countries", "value"), State("dl-years", "value"), prevent_initial_call=True)
+def download_data(n, kind, countries, years):
+    if not n:
         raise PreventUpdate
-    r = rows[selected[0]]
+    kind = kind or C.KIND_RIO
     try:
-        df = q.fetch_lines(r["kind"], r["country_iso3"], int(r["year"]), r["batch_id"], valid_only=None, limit=500)
+        df = q.fetch_current(kind, countries or None, years or None)
     except q.StoreError as exc:
-        return u.notice("error", str(exc))
-    keep = [c for c in ("source_row", "prog1", "prog2", "admin1", "func1", "amount", "climate_tag", "rio_marker", "rio_mitigation",
-                        "rio_adaptation", "eu_primary_objective", "tag_method", "rationale", "validity") if c in df.columns]
-    return html.Div([html.Div("First %s lines of this version (batch %s)" % (u.fmt_int(len(df)), r["batch_id"]), className="subhead"),
-                     u.table(df[keep], "lines-table", filterable=True)])
-
-
-@callback(Output("data-download", "data"), Input("act-download", "n_clicks"),
-          State("data-table", "selected_rows"), State("data-rows", "data"), prevent_initial_call=True)
-def download_version(n, selected, rows):
-    if not n or not selected or not rows:
-        raise PreventUpdate
-    r = rows[selected[0]]
-    df = q.fetch_lines(r["kind"], r["country_iso3"], int(r["year"]), r["batch_id"], valid_only=None, limit=1_000_000)
-    return dcc.send_bytes(u.to_csv_bytes(df), "cbt_%s_%s_%s_%s.csv" % (r["kind"], r["country_iso3"], r["year"], r["batch_id"]))
-
-
-_ACTIONS = {
-    "act-delete": ("delete", "Soft-delete this version?",
-                   "The rows stay in the table but get validity = FALSE, so they no longer count as current data. You can restore them later."),
-    "act-restore": ("restore", "Restore this version as current?",
-                    "These rows become validity = TRUE. Any other current version of the same country and year is set to FALSE."),
-    "act-discard": ("discard", "Discard this staged batch?",
-                    "These rows were written but never activated (an interrupted save). They are marked as discarded and never become current."),
-}
-
-
-@callback(
-    Output("data-modal", "hidden"), Output("data-modal-title", "children"), Output("data-modal-body", "children"),
-    Output("data-action", "data"), Output("data-msg", "children"), Output("data-version", "data"),
-    Input("act-delete", "n_clicks"), Input("act-restore", "n_clicks"), Input("act-discard", "n_clicks"),
-    Input("data-cancel", "n_clicks"), Input("data-confirm", "n_clicks"),
-    State("data-table", "selected_rows"), State("data-rows", "data"), State("data-action", "data"), State("data-version", "data"),
-    prevent_initial_call=True)
-def data_action_flow(_d, _r, _x, _c, _ok, selected, rows, action, version):
-    trig = ctx.triggered_id
-    if not trig or not ctx.triggered[0].get("value"):
-        raise PreventUpdate
-    if trig == "data-cancel":
-        return True, no_update, no_update, None, no_update, no_update
-    if trig in _ACTIONS:
-        if not selected or not rows:
-            raise PreventUpdate
-        r = rows[selected[0]]
-        key, title, text = _ACTIONS[trig]
-        body = [html.P(text, className="doc-p"),
-                html.P([html.Strong("%s · %s · %s" % (C.KIND_LABELS[r["kind"]], r["country"], r["year"])), " · batch ", html.Code(r["batch_id"]),
-                        " · %s lines" % u.fmt_int(r["n_lines"])], className="doc-p")]
-        return False, title, body, dict(action=key, **{k: r[k] for k in ("kind", "country_iso3", "year", "batch_id")}), no_update, no_update
-    # confirm
-    if not action:
-        raise PreventUpdate
-    if not u.can_manage(_actor()):
-        return True, no_update, no_update, None, u.notice("error", "You are not on the list of users allowed to change versions."), no_update
-    try:
-        if action["action"] == "delete":
-            n = q.soft_delete(action["kind"], action["country_iso3"], [int(action["year"])], action["batch_id"])
-            msg = u.notice("ok", "%s lines are now validity = FALSE (soft-deleted)." % u.fmt_int(n))
-        elif action["action"] == "restore":
-            n = q.restore(action["kind"], action["country_iso3"], action["batch_id"], years=[int(action["year"])])
-            msg = u.notice("ok", "Restored: this version is current again (%s rows updated)." % u.fmt_int(n))
-        else:
-            q.discard_staged(action["kind"], action["batch_id"])
-            msg = u.notice("ok", "The staged batch was marked as discarded.")
-    except q.StoreError as exc:
-        return True, no_update, no_update, None, u.notice("error", str(exc), "Not changed"), no_update
-    return True, no_update, no_update, None, msg, (version or 0) + 1
+        return no_update, u.notice("error", str(exc), "Download failed")
+    if df.empty:
+        return no_update, u.notice("info", "There is no data for this choice.")
+    cols = {k: v for k, v in _download_columns(kind).items() if k in df.columns}
+    out = df[list(cols)].rename(columns=cols)
+    if "Saved on" in out.columns:
+        out["Saved on"] = out["Saved on"].map(u.fmt_dt)
+    who = "-".join(sorted(countries))[:60] if countries else "all-countries"
+    name = "climate_budget_%s_%s.csv" % ("rio_markers" if kind == C.KIND_RIO else "eu_taxonomy", who)
+    return dcc.send_bytes(u.to_csv_bytes(out), name), None

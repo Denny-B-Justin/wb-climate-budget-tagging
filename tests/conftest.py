@@ -19,13 +19,12 @@ from src import queries as q            # noqa: E402
 @pytest.fixture()
 def store(tmp_path, monkeypatch):
     """Fresh SQLite database + clean module state for each test."""
+    from tests import sqlite_backend
     for var in (C.ENV_SERVER_HOSTNAME, C.ENV_HOST, C.ENV_HTTP_PATH, C.ENV_CLIENT_ID, C.ENV_CLIENT_SECRET, C.ENV_TOKEN,
                 C.ENV_CATALOG, C.ENV_SCHEMA):
         monkeypatch.delenv(var, raising=False)
-    monkeypatch.setenv(C.ENV_BACKEND, "sqlite")
-    monkeypatch.setenv(C.ENV_SQLITE_PATH, str(tmp_path / "t.sqlite"))
     monkeypatch.setenv(C.ENV_CACHE_TTL, "0")
-    q.reset()
+    sqlite_backend.install(tmp_path / "t.sqlite")
     q.ensure_tables()
     yield q
     q.reset()

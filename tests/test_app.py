@@ -17,7 +17,7 @@ from src import utils as u
 SAMPLE = Path(__file__).resolve().parent.parent / "sample_data" / "sample_input_budget.xlsx"
 
 # Components that are created *inside* a callback (tables built from the data), so no layout contains them.
-CREATED_IN_CALLBACKS = {"data-table", "lines-table", "dash-table", "preview-table"}
+CREATED_IN_CALLBACKS = {"dl-table", "preview-table"}
 
 
 def _ids(node, found):
@@ -59,10 +59,9 @@ def app_module(tmp_path, monkeypatch):
     monkeypatch.setenv(C.ENV_WORK_DIR, str(tmp_path / "work"))
     for var in (C.ENV_SERVER_HOSTNAME, C.ENV_HOST, C.ENV_HTTP_PATH, C.ENV_CLIENT_ID, C.ENV_CLIENT_SECRET, C.ENV_TOKEN):
         monkeypatch.delenv(var, raising=False)
-    monkeypatch.setenv(C.ENV_BACKEND, "sqlite")
-    monkeypatch.setenv(C.ENV_SQLITE_PATH, str(tmp_path / "db.sqlite"))
+    from tests import sqlite_backend
     monkeypatch.setenv(C.ENV_CACHE_TTL, "0")
-    q.reset()
+    sqlite_backend.install(tmp_path / "db.sqlite")
     import app
     yield app
     q.reset()

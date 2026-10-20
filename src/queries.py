@@ -19,14 +19,12 @@ physically deleted by the app):
     * a country/year that does not exist yet is simply appended;
     * if the numbers are byte-for-byte the same (content hash) nothing is written.
 
-Two interchangeable storage back-ends sit behind the same functions:
+The data is stored in Unity Catalog only (databricks-sql-connector). Missing connection settings are a
+:class:`ConfigError`; :func:`startup_check` logs them when the app starts. Users never see table names,
+connection details or SQL errors: infrastructure failures surface as :class:`ServiceUnavailable`, whose
+message is plain language, and the technical detail goes to the log.
 
-    databricks   Unity Catalog through databricks-sql-connector (production)
-    sqlite       a local file, for development, demos and the test-suite
-
-Which one is used is decided in :func:`get_config`: ``CBT_BACKEND`` wins, otherwise Databricks is
-used when any ``DATABRICKS_*`` connection variable is set (and then *all* required ones must be),
-otherwise SQLite with a clearly visible "demo storage" badge in the UI.
+The test-suite plugs a local SQLite stand-in in through :func:`use_backend`.
 
 Python 3.9 compatible.
 """
@@ -39,7 +37,6 @@ import logging
 import math
 import os
 import re
-import sqlite3
 import threading
 import time
 from collections import OrderedDict
@@ -68,8 +65,19 @@ class StoreError(RuntimeError):
     """Anything that went wrong while talking to the storage layer (message is user-presentable)."""
 
 
-class ConfigError(StoreError):
-    """Missing or invalid configuration (environment variables)."""
+class ServiceUnavailable(StoreError):
+    """The data service cannot be reached or refused the request. The message is for end users; details are logged."""
+
+    USER_MESSAGE = ("The data service is not available right now. Please try again in a few minutes; "
+                    "if the problem continues, contact the administrator of this tool.")
+
+    def __init__(self, detail: str = ""):
+        super().__init__(self.USER_MESSAGE)
+        self.detail = detail
+
+
+class ConfigError(ServiceUnavailable):
+    """Missing or invalid configuration (environment variables). `detail` names what to fix."""
 
 
 class NeedsConfirmation(StoreError):
@@ -103,13 +111,6 @@ class Config(object):
 
     def __init__(self) -> None:
         env = os.environ.get
-        db_vars = [C.ENV_SERVER_HOSTNAME, C.ENV_HOST, C.ENV_HTTP_PATH, C.ENV_CLIENT_ID, C.ENV_CLIENT_SECRET, C.ENV_TOKEN]
-        requested = (env(C.ENV_BACKEND) or "").strip().lower()
-        if requested and requested not in ("databricks", "sqlite"):
-            raise ConfigError("%s must be 'databricks' or 'sqlite' (got %r)." % (C.ENV_BACKEND, requested))
-        any_db = any((env(v) or "").strip() for v in db_vars)
-        self.backend = requested or ("databricks" if any_db else "sqlite")
-
         self.server_hostname = (env(C.ENV_SERVER_HOSTNAME) or env(C.ENV_HOST) or "").strip()
         self.server_hostname = re.sub(r"^https?://", "", self.server_hostname).rstrip("/")
         self.http_path = (env(C.ENV_HTTP_PATH) or "").strip()
@@ -119,41 +120,37 @@ class Config(object):
         self.catalog = (env(C.ENV_CATALOG) or "").strip()
         self.schema = (env(C.ENV_SCHEMA) or "").strip()
 
-        self.sqlite_path = env(C.ENV_SQLITE_PATH) or str(C.ROOT_DIR / "data" / "cbt_demo.sqlite")
         self.insert_mode = (env(C.ENV_INSERT_MODE) or "json").strip().lower()
         self.insert_chunk_rows = _int_env(C.ENV_INSERT_CHUNK, C.DEFAULT_INSERT_CHUNK_ROWS, 1, 20000)
         self.cache_ttl = _int_env(C.ENV_CACHE_TTL, C.DEFAULT_CACHE_TTL, 0, 86400)
         self.cache_max = _int_env(C.ENV_CACHE_MAX, C.DEFAULT_CACHE_MAX, 1, 5000)
         self.auto_create = C.env_flag(C.ENV_AUTO_CREATE, True)
 
-        if self.backend == "databricks":
-            missing = []
-            if not self.server_hostname:
-                missing.append(C.ENV_SERVER_HOSTNAME)
-            if not self.http_path:
-                missing.append(C.ENV_HTTP_PATH)
-            if not self.token and not (self.client_id and self.client_secret):
-                missing.append("%s + %s (or %s)" % (C.ENV_CLIENT_ID, C.ENV_CLIENT_SECRET, C.ENV_TOKEN))
-            if not self.catalog:
-                missing.append(C.ENV_CATALOG)
-            if not self.schema:
-                missing.append(C.ENV_SCHEMA)
-            if missing:
-                raise ConfigError(
-                    "Databricks storage is selected but these environment variables are missing: "
-                    + ", ".join(missing)
-                    + ". Set them in .env (local) or in the Posit Connect / Databricks Apps variables."
-                )
-            _ident(self.catalog, C.ENV_CATALOG)
-            _ident(self.schema, C.ENV_SCHEMA)
-            if self.insert_mode not in ("json", "values"):
-                raise ConfigError("%s must be 'json' or 'values'." % C.ENV_INSERT_MODE)
+    def validate(self) -> None:
+        """Raise ConfigError (detail = what to fix) unless every Unity Catalog setting is present and valid."""
+        missing = []
+        if not self.server_hostname:
+            missing.append(C.ENV_SERVER_HOSTNAME)
+        if not self.http_path:
+            missing.append(C.ENV_HTTP_PATH)
+        if not self.token and not (self.client_id and self.client_secret):
+            missing.append("%s + %s (or %s)" % (C.ENV_CLIENT_ID, C.ENV_CLIENT_SECRET, C.ENV_TOKEN))
+        if not self.catalog:
+            missing.append(C.ENV_CATALOG)
+        if not self.schema:
+            missing.append(C.ENV_SCHEMA)
+        if missing:
+            raise ConfigError(
+                "Unity Catalog credentials are missing: " + ", ".join(missing)
+                + ". Set them in .env (local) or in the Posit Connect / Databricks Apps environment variables.")
+        _ident(self.catalog, C.ENV_CATALOG)
+        _ident(self.schema, C.ENV_SCHEMA)
+        if self.insert_mode not in ("json", "values"):
+            raise ConfigError("%s must be 'json' or 'values'." % C.ENV_INSERT_MODE)
 
     @property
     def label(self) -> str:
-        if self.backend == "databricks":
-            return "Unity Catalog: %s.%s" % (self.catalog, self.schema)
-        return "Local demo storage (SQLite) - not Unity Catalog"
+        return "Unity Catalog: %s.%s" % (self.catalog, self.schema)
 
 
 def _int_env(name: str, default: int, lo: int, hi: int) -> int:
@@ -163,7 +160,8 @@ def _int_env(name: str, default: int, lo: int, hi: int) -> int:
     try:
         return max(lo, min(hi, int(str(raw).strip())))
     except ValueError:
-        raise ConfigError("%s must be an integer (got %r)." % (name, raw))
+        log.warning("%s must be an integer (got %r); using %d.", name, raw, default)
+        return default
 
 
 _state_lock = threading.RLock()
@@ -197,32 +195,13 @@ def table_name(kind: str) -> str:
 
 def table_fqn(kind: str) -> str:
     """Fully qualified, quoted table name used in SQL."""
-    cfg = get_config()
-    t = _q(_ident(table_name(kind), "table name"))
-    if cfg.backend == "databricks":
-        return "%s.%s.%s" % (_q(cfg.catalog), _q(cfg.schema), t)
-    return t
+    return _get_backend().table_ref(_q(_ident(table_name(kind), "table name")))
 
 
 def table_display_name(kind: str) -> str:
+    """catalog.schema.table - for log messages only, never shown to users."""
     cfg = get_config()
-    if cfg.backend == "databricks":
-        return "%s.%s.%s" % (cfg.catalog, cfg.schema, table_name(kind))
-    return table_name(kind)
-
-
-def storage_label() -> str:
-    try:
-        return get_config().label
-    except ConfigError as exc:
-        return "Storage not configured: %s" % exc
-
-
-def is_demo_storage() -> bool:
-    try:
-        return get_config().backend != "databricks"
-    except ConfigError:
-        return False
+    return "%s.%s.%s" % (cfg.catalog, cfg.schema, table_name(kind))
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -332,7 +311,6 @@ def _check_frame(kind: str, df: pd.DataFrame) -> None:
 # ══════════════════════════════════════════════════════════════════════════
 
 _SPARK_JSON_TYPE = {"STRING": "string", "INT": "int", "DOUBLE": "double", "BOOLEAN": "boolean", "TIMESTAMP": "string"}
-_SQLITE_TYPE = {"STRING": "TEXT", "INT": "INTEGER", "DOUBLE": "REAL", "BOOLEAN": "INTEGER", "TIMESTAMP": "TEXT"}
 
 
 def _spark_str(text: str) -> str:
@@ -367,6 +345,9 @@ class _Backend(object):
     def __init__(self, cfg: Config) -> None:
         self.cfg = cfg
 
+    def table_ref(self, quoted_table: str) -> str:
+        return quoted_table
+
     @contextlib.contextmanager
     def session(self, write: bool = False):
         raise NotImplementedError
@@ -380,67 +361,6 @@ class _Backend(object):
 
     def add_column_sql(self, kind: str, col: C.Col) -> str:
         raise NotImplementedError
-
-
-# ---------------------------------------------------------------- SQLite --------------------------
-
-class _SqliteSession(_Session):
-    def execute(self, sql, params=None):
-        cur = self.conn.execute(sql, params or {})
-        return cur.rowcount if cur.rowcount is not None else 0
-
-    def query(self, sql, params=None):
-        cur = self.conn.execute(sql, params or {})
-        cols = [d[0] for d in cur.description] if cur.description else []
-        return pd.DataFrame(cur.fetchall(), columns=cols)
-
-    def insert(self, kind, records):
-        if not records:
-            return
-        cols = C.column_names(kind)
-        stmt = "INSERT INTO %s (%s) VALUES (%s)" % (
-            table_fqn(kind), ", ".join(_q(c) for c in cols), ", ".join(":" + c for c in cols))
-        self.conn.executemany(stmt, records)
-
-    def ts(self, name):
-        return ":" + name
-
-
-class _SqliteBackend(_Backend):
-    name = "sqlite"
-
-    @contextlib.contextmanager
-    def session(self, write: bool = False):
-        path = self.cfg.sqlite_path
-        folder = os.path.dirname(os.path.abspath(path))
-        os.makedirs(folder, exist_ok=True)
-        conn = sqlite3.connect(path, timeout=30, isolation_level=None)   # autocommit; BEGIN only for writes
-        try:
-            conn.execute("PRAGMA busy_timeout=30000")
-            if write:
-                conn.execute("PRAGMA journal_mode=WAL")
-                conn.execute("BEGIN IMMEDIATE")
-            try:
-                yield _SqliteSession(self, conn)
-                if write:
-                    conn.execute("COMMIT")
-            except BaseException:
-                if write:
-                    conn.execute("ROLLBACK")
-                raise
-        finally:
-            conn.close()
-
-    def create_table_sql(self, kind):
-        cols = ", ".join("%s %s" % (_q(c.name), _SQLITE_TYPE[c.sql]) for c in C.TABLE_SCHEMAS[kind])
-        return "CREATE TABLE IF NOT EXISTS %s (%s, PRIMARY KEY (`record_id`))" % (table_fqn(kind), cols)
-
-    def existing_columns(self, s, kind):
-        df = s.query("PRAGMA table_info(%s)" % table_fqn(kind))
-        return df["name"].tolist() if len(df) else []
-
-    def add_column_sql(self, kind, col):
-        return "ALTER TABLE %s ADD COLUMN %s %s" % (table_fqn(kind), _q(col.name), _SQLITE_TYPE[col.sql])
 
 
 # ------------------------------------------------------------- Databricks -------------------------
@@ -541,6 +461,9 @@ def _json_chunks(records: List[Dict[str, Any]], max_rows: int, max_bytes: int = 
 class _DatabricksBackend(_Backend):
     name = "databricks"
 
+    def table_ref(self, quoted_table):
+        return "%s.%s.%s" % (_q(self.cfg.catalog), _q(self.cfg.schema), quoted_table)
+
     def _connect(self):
         try:
             from databricks import sql as dbsql
@@ -602,8 +525,18 @@ def _get_backend() -> _Backend:
     with _state_lock:
         if _backend is None:
             cfg = get_config()
-            _backend = _DatabricksBackend(cfg) if cfg.backend == "databricks" else _SqliteBackend(cfg)
+            cfg.validate()
+            _backend = _DatabricksBackend(cfg)
         return _backend
+
+
+def use_backend(backend: _Backend) -> None:
+    """Replace the Unity Catalog back-end (the tests use a local SQLite stand-in)."""
+    global _backend, _ready
+    with _state_lock:
+        _backend = backend
+        _ready = False
+    invalidate_cache()
 
 
 _CONFLICT_MARKERS = ("concurrentappend", "concurrentdelete", "concurrentmodification", "concurrenttransaction",
@@ -630,8 +563,9 @@ def _with_retry(fn: Callable[[], Any], attempts: int = 4, what: str = "operation
                 time.sleep(delay)
                 delay *= 2
                 continue
-            raise StoreError("%s failed: %s" % (what, _short(exc))) from exc
-    raise StoreError("%s failed." % what)                    # pragma: no cover
+            log.error("%s failed: %s", what, _short(exc, 2000))
+            raise ServiceUnavailable("%s failed: %s" % (what, _short(exc))) from exc
+    raise ServiceUnavailable("%s failed." % what)            # pragma: no cover
 
 
 def _short(exc: BaseException, n: int = 400) -> str:
@@ -651,7 +585,7 @@ def ensure_tables(force: bool = False) -> None:
             return
     cfg = get_config()
     be = _get_backend()
-    if not cfg.auto_create and cfg.backend == "databricks":
+    if not cfg.auto_create:
         _ready = True
         return
     try:
@@ -666,23 +600,39 @@ def ensure_tables(force: bool = False) -> None:
     except StoreError:
         raise
     except Exception as exc:
-        raise StoreError(
-            "Could not create or check the tables %s. The service principal needs USE CATALOG, USE SCHEMA, "
-            "CREATE TABLE, SELECT and MODIFY on %s. (%s)"
-            % (", ".join(table_display_name(k) for k in C.KINDS), storage_label(), _short(exc))
-        ) from exc
+        detail = ("Could not create or check the tables %s. The service principal needs USE CATALOG, USE SCHEMA, "
+                  "CREATE TABLE, SELECT and MODIFY on %s.%s. (%s)"
+                  % (", ".join(table_name(k) for k in C.KINDS), cfg.catalog, cfg.schema, _short(exc, 2000)))
+        log.error(detail)
+        raise ServiceUnavailable(detail) from exc
     with _state_lock:
         _ready = True
 
 
-def health() -> Dict[str, Any]:
-    """Cheap status for the footer badge: never raises."""
+def health() -> bool:
+    """True when the tables can be reached. Never raises; the reason for a failure is logged."""
     try:
-        cfg = get_config()
         ensure_tables()
-        return {"ok": True, "backend": cfg.backend, "label": cfg.label, "demo": cfg.backend != "databricks"}
-    except Exception as exc:
-        return {"ok": False, "backend": "?", "label": storage_label(), "demo": False, "error": _short(exc)}
+        return True
+    except ServiceUnavailable as exc:
+        log.error("Unity Catalog is not available: %s", exc.detail or exc)
+        return False
+    except Exception:                                        # pragma: no cover
+        log.exception("Unity Catalog health check failed")
+        return False
+
+
+def startup_check() -> None:
+    """Log at start-up whether Unity Catalog is configured and reachable. Never raises."""
+    cfg = get_config()
+    try:
+        cfg.validate()
+    except ConfigError as exc:
+        log.error("STORAGE NOT CONFIGURED - %s Saving, the dashboard and downloads will not work "
+                  "until this is fixed.", exc.detail)
+        return
+    if health():
+        log.info("Connected to %s (tables %s)", cfg.label, ", ".join(table_name(k) for k in C.KINDS))
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -875,6 +825,21 @@ def fetch_lines(kind: str, iso3: str, year: Optional[int] = None, batch_id: Opti
     return _frame_types(df, kind)
 
 
+def fetch_current(kind: str, iso3s: Optional[Sequence[str]] = None, years: Optional[Iterable[int]] = None,
+                  limit: int = 2_000_000) -> pd.DataFrame:
+    """The current (valid) lines of several countries / years - what the dashboard shows. Empty filters mean all."""
+    params: Dict[str, Any] = {}
+    where = ["validity = TRUE"]
+    if iso3s:
+        where.append("country_iso3 IN (%s)" % _in_clause("c", list(iso3s), params))
+    if years:
+        where.append("year IN (%s)" % _in_clause("y", sorted({int(y) for y in years}), params))
+    limit = max(1, min(int(limit), 5_000_000))
+    sql = "SELECT * FROM %s WHERE %s ORDER BY country, year, source_row LIMIT %d" % (
+        table_fqn(kind), " AND ".join(where), limit)
+    return _frame_types(_run_query(sql, params, cache=False), kind)
+
+
 def integrity_issues() -> pd.DataFrame:
     """(kind, country_iso3, year) combinations that have more than one valid batch (should be empty)."""
     frames = []
@@ -1009,23 +974,24 @@ def save(kind: str, df: pd.DataFrame, replace: bool = False, skip_identical: boo
                 if progress:
                     progress(min(total, start + chunk), total)
 
-    _with_retry(stage, attempts=2, what="Writing rows to %s" % table_display_name(kind))
+    _with_retry(stage, attempts=2, what="Writing rows to %s" % table_name(kind))
     invalidate_cache()
     counted = _run_query("SELECT COUNT(*) AS n FROM %s WHERE batch_id = :bid" % table_fqn(kind),
                          {"bid": batch_id}, cache=False)
     n_staged = int(counted["n"].iloc[0]) if len(counted) else 0
     if n_staged != expected:
         _flip_discard(kind, batch_id)
-        raise StoreError(
-            "Row count check failed for %s: expected %d rows, found %d. The partial upload was marked as discarded "
-            "(validity stays FALSE) and the previous data is untouched." % (table_display_name(kind), expected, n_staged))
+        log.error("Row count check failed for %s batch %s: expected %d rows, found %d; batch discarded.",
+                  table_display_name(kind), batch_id, expected, n_staged)
+        raise StoreError("The data could not be saved completely, so nothing was changed. Please try saving again.")
     try:
         _flip(kind, iso3, years, batch_id, C.REASON_REPLACED)
     except StoreError as exc:
+        log.error("%d rows staged in %s as batch %s could not be activated: %s",
+                  expected, table_display_name(kind), batch_id, getattr(exc, "detail", "") or exc)
         raise StoreError(
-            "The %d rows are staged in %s as batch %s (validity = FALSE) but could not be activated: %s. "
-            "Previous data is untouched; discard the staged batch from the 'Data in Unity Catalog' page, or save again."
-            % (expected, table_display_name(kind), batch_id, exc)) from exc
+            "The data was uploaded but could not be switched on, so the dashboard still shows the previous version. "
+            "Please save again.") from exc
     report["rows_written"] = expected
     return report
 

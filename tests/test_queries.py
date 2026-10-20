@@ -138,7 +138,7 @@ def test_row_count_guard_discards_partial_batch(store, monkeypatch):
     df = make_frame(RIO, "ZMB", (2022,), seed=1)
     orig = store.to_records
     monkeypatch.setattr(store, "to_records", lambda kind, d: orig(kind, d)[:-1])      # lose one row on the way
-    with pytest.raises(q.StoreError, match="Row count check failed"):
+    with pytest.raises(q.StoreError, match="could not be saved completely"):
         q.save(RIO, df)
     assert active(RIO).empty
     assert q.list_versions(RIO, "ZMB")["status"].tolist() == ["discarded"]
@@ -205,28 +205,31 @@ def test_json_chunking_respects_limits():
     assert all(len(c) <= 21_000 for c in chunks)
 
 
-def test_config_validation(monkeypatch):
-    for var in (C.ENV_SERVER_HOSTNAME, C.ENV_HTTP_PATH, C.ENV_CLIENT_ID, C.ENV_CLIENT_SECRET, C.ENV_TOKEN,
-                C.ENV_CATALOG, C.ENV_SCHEMA, C.ENV_BACKEND):
+def test_config_validation(monkeypatch, caplog):
+    for var in (C.ENV_SERVER_HOSTNAME, C.ENV_HOST, C.ENV_HTTP_PATH, C.ENV_CLIENT_ID, C.ENV_CLIENT_SECRET, C.ENV_TOKEN,
+                C.ENV_CATALOG, C.ENV_SCHEMA):
         monkeypatch.delenv(var, raising=False)
     q.reset()
-    assert q.get_config().backend == "sqlite" and q.is_demo_storage()
+    # no credentials: users get a plain message, the log names what is missing
+    with pytest.raises(q.ServiceUnavailable) as e:
+        q.ensure_tables()
+    assert "catalog" not in str(e.value).lower() and "DATABRICKS" not in str(e.value)
+    assert C.ENV_HTTP_PATH in e.value.detail and C.ENV_CATALOG in e.value.detail
+    with caplog.at_level("ERROR"):
+        q.startup_check()
+    assert "STORAGE NOT CONFIGURED" in caplog.text and C.ENV_SERVER_HOSTNAME in caplog.text
+    assert q.health() is False
     q.reset()
     monkeypatch.setenv(C.ENV_SERVER_HOSTNAME, "adb-1.azuredatabricks.net")
-    with pytest.raises(q.ConfigError) as e:
-        q.get_config()
-    assert C.ENV_HTTP_PATH in str(e.value) and C.ENV_CATALOG in str(e.value)
-    q.reset()
     monkeypatch.setenv(C.ENV_HTTP_PATH, "/sql/1.0/warehouses/abc")
     monkeypatch.setenv(C.ENV_TOKEN, "dapi-x")
     monkeypatch.setenv(C.ENV_CATALOG, "prd; DROP TABLE x")
     monkeypatch.setenv(C.ENV_SCHEMA, "sch")
-    with pytest.raises(q.ConfigError, match="letters, digits"):
-        q.get_config()
+    with pytest.raises(q.ConfigError, match="data service"):
+        q._get_backend()
     q.reset()
     monkeypatch.setenv(C.ENV_CATALOG, "prd_mega")
-    cfg = q.get_config()
-    assert cfg.backend == "databricks" and q.table_fqn(RIO) == "`prd_mega`.`sch`.`cbt_global_rio_markers`"
+    assert q.table_fqn(RIO) == "`prd_mega`.`sch`.`cbt_global_rio_markers`"
     q.reset()
 
 
@@ -234,7 +237,6 @@ def test_databricks_sql_text(monkeypatch):
     """The Databricks-only statements can't run here, but their text must be well-formed."""
     for var in (C.ENV_CLIENT_ID, C.ENV_CLIENT_SECRET):
         monkeypatch.delenv(var, raising=False)
-    monkeypatch.setenv(C.ENV_BACKEND, "databricks")
     monkeypatch.setenv(C.ENV_SERVER_HOSTNAME, "https://adb-1.azuredatabricks.net/")
     monkeypatch.setenv(C.ENV_HTTP_PATH, "/sql/1.0/warehouses/abc")
     monkeypatch.setenv(C.ENV_TOKEN, "dapi-x")
@@ -294,3 +296,14 @@ def test_restore_single_year_of_a_multi_year_batch(store):
     act = active(RIO).set_index("year")["batch_id"].to_dict()
     assert act == {2020: b["batch_id"].iloc[0], 2021: a["batch_id"].iloc[0]}
     assert q.integrity_issues().empty
+
+
+def test_fetch_current_filters_countries_and_years(store):
+    q.save(RIO, make_frame(RIO, "ZMB", (2021, 2022), seed=1))
+    q.save(RIO, make_frame(RIO, "KEN", (2022,), seed=2))
+    q.save(RIO, make_frame(RIO, "ZMB", (2022,), seed=1, tweak=5), replace=True)    # older ZMB 2022 version is set aside
+    both = q.fetch_current(RIO)
+    assert set(both["country_iso3"]) == {"ZMB", "KEN"} and both["validity"].all()
+    assert len(both[(both["country_iso3"] == "ZMB") & (both["year"] == 2022)]["batch_id"].unique()) == 1
+    zmb = q.fetch_current(RIO, ["ZMB"], [2022])
+    assert set(zmb["country_iso3"]) == {"ZMB"} and set(zmb["year"]) == {2022}

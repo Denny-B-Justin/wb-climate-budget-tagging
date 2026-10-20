@@ -4,8 +4,8 @@ pages.py
 Layout builders for the four pages. Layouts only describe structure and ids; behaviour lives in callbacks.py.
 
     ?page=home           Overview: a short introduction and the Launch Tool button
-    ?page=tag            Tag a budget: metadata -> upload -> run -> review -> save to Unity Catalog
-    ?page=dashboard      Cross-country view of the *valid* data in Unity Catalog
+    ?page=tag            Tag a budget: metadata -> upload -> run -> review -> save to the dashboard
+    ?page=dashboard      Cross-country view of the *latest saved* data
     ?page=data           Versions in the tables; soft-delete / restore / download
     ?page=methodologies  How the tagging works
 
@@ -42,14 +42,15 @@ def graph(fig: Any) -> dcc.Graph:
 
 def home_layout(map_url: str) -> html.Section:
     return html.Section(className="hero", style={"--hero-map": "url(%s)" % map_url}, children=html.Div(className="hero-inner", children=[
-        html.P("Climate budget tagging", className="eyebrow"),
-        html.H1("Find the climate share of a government budget", className="hero-title"),
+        html.P("CBT", className="eyebrow"),
+        html.H1("Climate Budget Tagging Tool", className="hero-title"),
+        # html.H1("Find the climate share of a government budget", className="hero-title"),
         html.P("The Climate Budget Tagging Tool tags every budget line against the Rio Markers and the EU Taxonomy. "
                "Upload a budget, review the tags, and compare countries side by side.", className="hero-lede"),
         html.Div(className="hero-actions", children=[
             dcc.Link("Launch Tool", href="?page=%s" % C.PAGE_TAG, className="btn btn-primary btn-lg"),
             dcc.Link("Dashboard", href="?page=%s" % C.PAGE_DASHBOARD, className="btn btn-teal btn-lg"),
-            dcc.Link("How it works", href="?page=%s" % C.PAGE_METHODOLOGY, className="btn btn-ghost btn-lg"),
+            html.A("How it works", href="?page=%s" % C.PAGE_METHODOLOGY, target="_blank", rel="noopener", className="btn btn-ghost btn-lg"),
         ]),
     ]))
 
@@ -163,11 +164,11 @@ def tag_layout(job_id: Optional[str], upload: Optional[Dict[str, Any]]) -> html.
     key = "%s:%s" % (job_id, tag_status.get("finished")) if tag_state == "done" else ""
     steps = [
         ("Describe", "country, year, source"), ("Upload", "and match columns"), ("Run", "the tagging rules"),
-        ("Review", "numbers and rules"), ("Save", "to Unity Catalog")]
+        ("Review", "numbers and rules"), ("Save", "to the dashboard")]
     body = [
         u.page_intro("Tag a government budget",
                      "Upload a budget, tag every line against the Rio Markers and the EU Taxonomy, review the result and save it to the "
-                     "global Unity Catalog tables.", eyebrow="Climate budget tagging"),
+                     "shared dashboard.", eyebrow="Climate budget tagging"),
         html.Section(className="section tight", children=html.Div(className="section-inner", children=[
             html.Ol(className="stepper", children=[html.Li([html.Span(str(i), className="step-n"), html.Div([html.Strong(a), html.Span(" " + b)])])
                                                     for i, (a, b) in enumerate(steps, start=1)]),
@@ -225,6 +226,13 @@ def _result_tables(job_id: str, which: str, limit: int = 2000) -> Any:
                          for c in cols])])
 
 
+def _tag_rest(summary: Dict[str, Any]) -> Dict[str, float]:
+    """Unclear and neutral shares from summarize()'s per-tag totals."""
+    by = summary.get("by_tag") or {}
+    total = sum(by.values()) or 1.0
+    return {t: by.get(t, 0.0) / total for t in ("AMBIGUOUS", "NEUTRAL")}
+
+
 def results_content(job_id: Optional[str], status: Dict[str, Any]) -> Any:
     """Review step: headline numbers, charts per rule, the tagged lines, downloads and the save button."""
     if not job_id:
@@ -253,8 +261,8 @@ def results_content(job_id: Optional[str], status: Dict[str, Any]) -> Any:
                 u.kpi("Principal (2)", u.fmt_pct(s["principal_share"]), basis),
                 u.kpi("Significant (1)", u.fmt_pct(s["significant_share"]), basis),
                 u.kpi("Lines with a marker", u.fmt_int(s["tagged_lines"]), "of %s" % u.fmt_int(s["lines"]))]),
-            html.Div("Split by Rio level", className="subhead"),
-            graph(u.fig_rio_levels(s)),
+            html.Div("How the budget splits by Rio level", className="subhead"),
+            graph(u.fig_rio_donut(s["principal_share"], s["significant_share"], s["basis"])),
             html.Div("What decided each classification", className="subhead"),
             graph(u.fig_methods(stats.get("rio_methods", {})))]))
     if res.get("eu") is not None:
@@ -266,6 +274,8 @@ def results_content(job_id: Optional[str], status: Dict[str, Any]) -> Any:
                 u.kpi("Green share", u.fmt_pct(s["green_share"]), "any objective · " + basis, tone="primary"),
                 u.kpi("Brown-screen share", u.fmt_pct(s["brown_share"]), basis, tone="brown"),
                 u.kpi("GREEN lines", u.fmt_int(s["tagged_lines"]), "of %s" % u.fmt_int(s["lines"]))]),
+            html.Div("Green, brown and neutral spending", className="subhead"),
+            graph(u.fig_tag_donut(s["green_share"], s["brown_share"], _tag_rest(s), s["basis"])),
             html.Div("Objectives served", className="subhead"),
             graph(u.fig_eu_objectives(s)),
             html.Div("What decided each classification", className="subhead"),
@@ -277,13 +287,12 @@ def results_content(job_id: Optional[str], status: Dict[str, Any]) -> Any:
         dcc.RadioItems(id="table-which", value=tabs_default, className="segmented", inputClassName="seg-input", labelClassName="seg-label",
                        options=[{"label": C.KIND_LABELS[k], "value": k} for k in C.KINDS if res.get(k) is not None])]))
     blocks.append(html.Div(id="result-table-wrap", children=_result_tables(job_id, tabs_default)))
-    targets = [q.table_display_name(k) for k in C.KINDS if res.get(k) is not None]
     blocks.append(html.Div(className="save-card", children=[
-        html.Div([html.H3("Save to Unity Catalog", className="card-title"),
-                  html.P(["Writes the lines of ", html.Strong("%s" % meta.country), " (", u.year_span(stats.get("years", [])), ") to ",
-                          html.Code(" and ".join(targets)), ". New country-years are added; if a country and year already exist you will be "
-                          "asked before anything is replaced."], className="muted")]),
-        html.Button("Save to Unity Catalog…", id="save-btn", n_clicks=0, className="btn btn-primary")]))
+        html.Div([html.H3("Save to the dashboard", className="card-title"),
+                  html.P(["Adds the results for ", html.Strong("%s" % meta.country), " (", u.year_span(stats.get("years", [])),
+                          ") to the dashboard. If this country and year already exist you will be asked before anything is replaced."],
+                         className="muted")]),
+        html.Button("Save…", id="save-btn", n_clicks=0, className="btn btn-primary")]))
     return html.Div(className="results", children=blocks)
 
 
@@ -300,9 +309,9 @@ def save_modal() -> html.Div:
 
 def plan_table(plans: Dict[str, pd.DataFrame]) -> Any:
     """Rows: methodology x year, with what saving will do. Shown in the confirmation dialog."""
-    labels = {q.ACTION_NEW: ("Add", "ok", "no valid data for this country-year yet"),
-              q.ACTION_SAME: ("Skip", "neutral", "identical values are already stored"),
-              q.ACTION_CHANGED: ("Replace", "warn", "different values exist: the old rows become validity = FALSE")}
+    labels = {q.ACTION_NEW: ("Add", "ok", "nothing saved for this country and year yet"),
+              q.ACTION_SAME: ("Skip", "neutral", "the same results are already saved"),
+              q.ACTION_CHANGED: ("Replace", "warn", "different results are already saved; the old version is kept as an earlier version")}
     rows = []
     for kind, plan in plans.items():
         for _, r in plan.iterrows():
@@ -313,16 +322,16 @@ def plan_table(plans: Dict[str, pd.DataFrame]) -> Any:
             rows.append(html.Tr([html.Td(C.KIND_LABELS[kind]), html.Td(str(int(r["year"]))), html.Td(u.fmt_int(r["new_lines"])),
                                  html.Td(u.chip(text, tone)), html.Td([why, html.Div(old, className="muted")] if old else why)]))
     return html.Div(className="doc-table-wrap", children=html.Table(className="doc-table", children=[
-        html.Thead(html.Tr([html.Th(h) for h in ("Table", "Year", "New lines", "Action", "Why")])), html.Tbody(rows)]))
+        html.Thead(html.Tr([html.Th(h) for h in ("Method", "Year", "New lines", "Action", "Why")])), html.Tbody(rows)]))
 
 
 def save_status_content(status: Dict[str, Any], state: Optional[str] = None) -> Any:
     state = state or P.effective_state(status)
     if state == "running":
-        return u.step_card(5, "Saving to Unity Catalog", "The previous data stays valid until the new rows are complete.", [
+        return u.step_card(5, "Saving", "The previous version stays in place until the new one is complete.", [
             u.progress_bar(int(status.get("done", 0)), int(status.get("total", 0)), status.get("phase") or "Working…")], cls="card-live")
     if state == "stalled":
-        return u.notice("error", "The save stopped reporting progress. Open 'Data in Unity Catalog' to see what was written, then try again.", "Save interrupted")
+        return u.notice("error", "The save stopped reporting progress. Check the dashboard, then try again.", "Save interrupted")
     if state == "error":
         return u.notice("error", status.get("error") or "Unknown error", "Saving failed")
     if state == "done":
@@ -333,13 +342,12 @@ def save_status_content(status: Dict[str, Any], state: Optional[str] = None) -> 
             if r["rows_written"]:
                 bits.append("%s lines written (%s)" % (u.fmt_int(r["rows_written"]), u.year_span(r["years_added"] + r["years_replaced"])))
             if r["years_replaced"]:
-                bits.append("replaced %s - old rows are now validity = FALSE" % u.year_span(r["years_replaced"]))
+                bits.append("replaced %s (the earlier version is kept)" % u.year_span(r["years_replaced"]))
             if r["years_unchanged"]:
                 bits.append("unchanged, skipped: %s" % u.year_span(r["years_unchanged"]))
-            lines.append(html.Li([html.Strong(C.KIND_LABELS[r["kind"]] + ": "), "; ".join(bits) or "nothing to write", " → ", html.Code(r["table"])]))
+            lines.append(html.Li([html.Strong(C.KIND_LABELS[r["kind"]] + ": "), "; ".join(bits) or "nothing to write"]))
         return u.notice("ok", [html.Ul(lines, className="doc-list"),
-                               html.Div(["Batch ", html.Code(rep.get("batch_id", "")), " · ",
-                                         dcc.Link("See it under Data in Unity Catalog", href="?page=%s" % C.PAGE_DATA)])], "Saved")
+                               html.Div([dcc.Link("See it on the dashboard", href="?page=%s" % C.PAGE_DASHBOARD)])], "Saved")
     return None
 
 
@@ -349,7 +357,7 @@ def save_status_content(status: Dict[str, Any], state: Optional[str] = None) -> 
 
 def dashboard_layout() -> html.Div:
     return html.Div([
-        u.page_intro("Dashboard", "Climate-relevant share of the budget, country by country - computed from the valid rows in Unity Catalog.",
+        u.page_intro("Dashboard", "Climate-relevant share of the budget, country by country - based on the latest saved version of each country.",
                      eyebrow="Cross-country view"),
         html.Section(className="section tight", children=html.Div(className="section-inner", children=[
             html.Div(className="filterbar", children=[
@@ -372,54 +380,34 @@ def dashboard_layout() -> html.Div:
 
 
 # ══════════════════════════════════════════════════════════════════════════
-# Data in Unity Catalog
+# Download data
 # ══════════════════════════════════════════════════════════════════════════
 
 def data_layout() -> html.Div:
     return html.Div([
-        u.page_intro("Data in Unity Catalog",
-                     "Every saved version of every country-year. Only rows with validity = TRUE are 'current'; older versions are kept so they "
-                     "can be inspected or restored.", eyebrow="Manage"),
+        u.page_intro("Download data",
+                     "Choose a method and the countries you need, then download the tagged budget lines as a CSV file that opens in Excel.",
+                     eyebrow="Download"),
         html.Section(className="section tight", children=html.Div(className="section-inner", children=[
-            html.Div(id="data-kpis"),
-            html.Div(id="data-integrity"),
-            html.Div(className="filterbar", children=[
-                u.field("Country", dcc.Dropdown(id="data-country", options=[], value=None, placeholder="All countries", clearable=True, className="select")),
-                u.field("Methodology", dcc.Dropdown(id="data-kind", options=[{"label": C.KIND_LABELS[k], "value": k} for k in C.KINDS],
-                                                    value=None, placeholder="Both", clearable=True, className="select")),
-                u.field("Status", dcc.Dropdown(id="data-status", value=None, placeholder="All", clearable=True, className="select",
-                                               options=[{"label": s.capitalize(), "value": s} for s in
-                                                        ("active", "replaced", "deleted", "staged", "discarded")])),
-                html.Button("Refresh", id="data-refresh", n_clicks=0, className="btn btn-outline"),
+            html.Div(className="card download-card", children=[
+                html.Div(className="download-form", children=[
+                    u.field("Method", dcc.RadioItems(id="dl-kind", value=C.KIND_RIO, className="segmented", inputClassName="seg-input",
+                                                     labelClassName="seg-label",
+                                                     options=[{"label": C.KIND_LABELS[k], "value": k} for k in C.KINDS])),
+                    u.field("Countries", dcc.Dropdown(id="dl-countries", options=[], value=[], multi=True,
+                                                      placeholder="All countries", className="select select-wide"),
+                            "Leave empty to download every country."),
+                    u.field("Years", dcc.Dropdown(id="dl-years", options=[], value=[], multi=True,
+                                                  placeholder="All years", className="select select-wide"),
+                            "Leave empty to download every year."),
+                ]),
+                dcc.Loading(type="circle", color=C.INDIGO, children=html.Div(id="dl-summary")),
+                html.Div(className="actions", children=[
+                    html.Button("Download CSV", id="dl-btn", n_clicks=0, className="btn btn-primary btn-lg", disabled=True)]),
+                html.Div(id="dl-msg"),
             ]),
-            dcc.Loading(type="circle", color=C.INDIGO, children=html.Div(id="data-table-wrap")),
-            html.Div(className="action-bar", children=[
-                html.Span("Selected version:", className="muted", id="data-selected-label"),
-                html.Button("View lines", id="act-view", n_clicks=0, className="btn btn-outline", disabled=True),
-                html.Button("Download CSV", id="act-download", n_clicks=0, className="btn btn-outline", disabled=True),
-                html.Button("Soft-delete (validity → FALSE)", id="act-delete", n_clicks=0, className="btn btn-outline", disabled=True),
-                html.Button("Restore as current", id="act-restore", n_clicks=0, className="btn btn-outline", disabled=True),
-                html.Button("Discard staged batch", id="act-discard", n_clicks=0, className="btn btn-outline", disabled=True),
-            ]),
-            html.Div(id="data-msg"),
-            html.Div(id="data-lines"),
-            html.Details(className="doc-details", children=[
-                html.Summary("Where the data lives and how to query it"),
-                html.Div(id="data-where")]),
-            html.Div(className="muted-note", children="Soft-delete and restore only flip the validity flag; no row is physically removed by this app."),
         ])),
-        html.Div(id="data-modal", className="modal", hidden=True, children=[
-            html.Div(className="modal-backdrop"),
-            html.Div(className="modal-card", role="dialog", **{"aria-modal": "true", "aria-labelledby": "data-modal-title"}, children=[
-                html.H3("Confirm", id="data-modal-title", className="modal-title"),
-                html.Div(id="data-modal-body", className="modal-body"),
-                html.Div(className="modal-actions", children=[
-                    html.Button("Cancel", id="data-cancel", n_clicks=0, className="btn btn-outline"),
-                    html.Button("Confirm", id="data-confirm", n_clicks=0, className="btn btn-primary")])])]),
-        dcc.Store(id="data-action"),
-        dcc.Store(id="data-rows", data=[]),
-        dcc.Store(id="data-version", data=0),
-        dcc.Download(id="data-download"),
+        dcc.Download(id="dl-file"),
     ])
 
 

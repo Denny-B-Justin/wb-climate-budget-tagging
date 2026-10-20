@@ -147,7 +147,7 @@ TOC = [
     ("overview", "Overview"), ("input", "Input data and preparation"), ("cascade", "The decision cascade"),
     ("rio", "Rio Markers"), ("eu", "EU Taxonomy"), ("cofog", "COFOG pre-determined tags"),
     ("keywords", "Keyword dictionaries"), ("indicators", "Indicators"),
-    ("storage", "Storage and versioning"), ("limits", "Limitations and good practice"), ("glossary", "Glossary and sources"),
+    ("storage", "Saving and versions"), ("limits", "Limitations and good practice"), ("glossary", "Glossary and sources"),
 ]
 
 
@@ -344,31 +344,19 @@ def layout() -> html.Div:
                      ]),
                      ),
 
-                _sec("storage", "Storage and versioning",
-                     _p("Results are saved to two global Unity Catalog Delta tables with one row per budget line. All countries share the tables; "
-                        "the ", html.Code("country_iso3"), " and ", html.Code("year"), " columns are the metadata that identify a slice."),
-                     _table(["Table", "Content"], [
-                         [html.Code(C.TABLE_NAMES[C.KIND_RIO]), "Rio markers (rio_marker, rio_mitigation, rio_adaptation) plus tag, confidence, rule, rationale."],
-                         [html.Code(C.TABLE_NAMES[C.KIND_EU]), "Six boolean objective flags, primary objective, tag, confidence, rule, rationale."],
-                     ]),
-                     _p("Every row also holds the budget line as uploaded, the metadata you entered (currency, data source, notes), and an audit "
-                        "trail (file, row number, who and when, methodology version, content fingerprint)."),
-                     _h3("The validity column"),
-                     _p(html.Code("validity"), " is TRUE for the current version of a country-year and FALSE for anything else. Nothing is ever "
-                        "physically deleted by the app: replacing or deleting data flips the flag and records who did it, when and why, so every "
-                        "earlier version can be inspected or restored."),
+                _sec("storage", "Saving and versions",
+                     _p("Saved results feed the shared dashboard. Each saved version covers one country and one year, and keeps the "
+                        "budget lines as uploaded, the tags and reasons, the details you entered (currency, data source, notes) and when it "
+                        "was saved."),
                      html.Div(className="three-col", children=[
-                         _callout("ok", "New country or year", "No valid rows exist for that country-year: the new rows are appended with validity = TRUE."),
-                         _callout("info", "Same values", "A valid version with identical content already exists: nothing is written and you are told so."),
-                         _callout("warn", "Same country-year, different values",
-                                  "You are asked to confirm. The old rows are set to FALSE and the new rows to TRUE in one atomic update."),
+                         _callout("ok", "New country or year", "Nothing is saved yet for that country and year: the results are simply added."),
+                         _callout("info", "Same results", "An identical version is already saved: nothing changes and you are told so."),
+                         _callout("warn", "Same country and year, different results",
+                                  "You are asked to confirm. The new version replaces the old one on the dashboard; the old one is kept."),
                      ]),
-                     _p("The switch is safe by construction: the new rows are first written with validity = FALSE and counted; only then does a "
-                        "single Delta UPDATE flip old → FALSE and new → TRUE together. If the upload fails halfway, the previous data stays valid. "
-                        "Two people saving the same country-year at once end with exactly one valid version."),
-                     _p("Always filter on validity when you query the tables:"),
-                     _code("SELECT country_iso3, year, SUM(amount * CASE rio_marker WHEN 2 THEN 1.0 WHEN 1 THEN 0.4 ELSE 0 END) / SUM(amount) AS rio_weighted_share\n"
-                           "FROM <catalog>.<schema>.%s\nWHERE validity = TRUE\nGROUP BY country_iso3, year;" % C.TABLE_NAMES[C.KIND_RIO]),
+                     _p("Nothing is ever deleted: replacing a version only changes which one the dashboard uses, and the earlier version is "
+                        "kept. If a save is interrupted, the dashboard keeps showing the previous version. The Download data page always "
+                        "gives the version the dashboard shows."),
                      ),
 
                 _sec("limits", "Limitations and good practice",
@@ -396,9 +384,6 @@ def layout() -> html.Div:
                          ["COFOG", "Classification of the Functions of Government (UN): ten divisions such as 05 Environmental protection."],
                          ["Rio Markers", "OECD DAC policy markers scoring whether an activity targets climate objectives: 0 not targeted, 1 significant, 2 principal."],
                          ["EU Taxonomy", "EU classification of environmentally sustainable activities across six objectives (Regulation (EU) 2020/852)."],
-                         ["Validity", "TRUE for the current version of a country-year, FALSE for replaced, deleted or staged rows."],
-                         ["Batch", "All rows written by one save operation; identified by batch_id."],
-                         ["Content hash", "Fingerprint of the stored values of a country-year, used to recognise an identical re-upload."],
                      ]),
                      _p("Sources: OECD DAC Rio Markers for climate change; Regulation (EU) 2020/852 (Taxonomy Regulation); UN Classification of the "
                         "Functions of Government (COFOG); the tagging rules in this repository (", html.Code("rio_marker_tagger.py"), ", ",

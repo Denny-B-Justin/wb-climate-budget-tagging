@@ -235,10 +235,9 @@ def test_end_to_end_jobs(tmp_path, monkeypatch):
     monkeypatch.setenv(C.ENV_WORK_DIR, str(tmp_path / "work"))
     for var in (C.ENV_SERVER_HOSTNAME, C.ENV_HTTP_PATH, C.ENV_CLIENT_ID, C.ENV_CLIENT_SECRET, C.ENV_TOKEN):
         monkeypatch.delenv(var, raising=False)
-    monkeypatch.setenv(C.ENV_BACKEND, "sqlite")
-    monkeypatch.setenv(C.ENV_SQLITE_PATH, str(tmp_path / "db.sqlite"))
+    from tests import sqlite_backend
     monkeypatch.setenv(C.ENV_CACHE_TTL, "0")
-    q.reset()
+    sqlite_backend.install(tmp_path / "db.sqlite")
     jid = P.new_job_id()
     import shutil
     shutil.copy(SAMPLE, P.job_file(jid, "upload.xlsx"))

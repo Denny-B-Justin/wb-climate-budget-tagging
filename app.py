@@ -13,7 +13,7 @@ Structure
   methodology.py    the Methodologies page
   src/constants.py  names, schemas, colours, country list, environment variable names
   src/utils.py      formatting, charts and reusable components
-  src/queries.py    ALL storage access (Unity Catalog via Databricks SQL, or local SQLite for development)
+  src/queries.py    ALL storage access (Unity Catalog via Databricks SQL)
   src/pipeline.py   reading uploads, cleaning, running the taggers, background jobs
   green_budget_tagger*.py, rio_marker_tagger.py, eu_taxonomy_tagger.py, shared/
                     the original tagging engine - copied unchanged
@@ -48,7 +48,7 @@ app = Dash(
     title=C.APP_NAME,
     update_title=None,                          # keep the tab title steady while callbacks run
     meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"},
-               {"name": "description", "content": "Tag national budgets with Rio Markers and the EU Taxonomy and save them to Unity Catalog."}],
+               {"name": "description", "content": "Tag national budgets with Rio Markers and the EU Taxonomy and compare countries."}],
 )
 server = app.server
 
@@ -103,6 +103,17 @@ app.clientside_callback(
 )
 
 import callbacks  # noqa: E402,F401  (registers the callbacks on the app above)
+
+from src import queries as _queries  # noqa: E402
+
+
+def _log_storage_status() -> None:
+    """Report missing credentials / unreachable Unity Catalog in the log at start-up (never shown to users)."""
+    import threading
+    threading.Thread(target=_queries.startup_check, name="storage-check", daemon=True).start()
+
+
+_log_storage_status()
 
 
 def main() -> None:
