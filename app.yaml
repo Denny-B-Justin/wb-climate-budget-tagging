@@ -1,0 +1,11 @@
+# Databricks Apps. The platform injects DATABRICKS_APP_PORT and the app's service-principal credentials
+# (DATABRICKS_CLIENT_ID / DATABRICKS_CLIENT_SECRET / DATABRICKS_HOST - the app reads the host from the last one).
+# Add the SQL warehouse as an app resource and expose its HTTP path here.
+command: ["python", "app.py"]
+env:
+  - name: CBT_CATALOG
+    value: "prd_mega"
+  - name: CBT_SCHEMA
+    value: "sgpbpi163"
+  - name: DATABRICKS_HTTP_PATH
+    valueFrom: sql-warehouse        # name of the SQL warehouse resource added to the app
