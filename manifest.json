@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "locale": "English_United States.1252",
+  "metadata": {
+    "appmode": "python-dash",
+    "entrypoint": "app.py"
+  },
+  "python": {
+    "version": "3.9.13",
+    "package_manager": {
+      "name": "pip",
+      "version": "22.0.4",
+      "package_file": "requirements.txt"
+    }
+  },
+  "files": {
+    ".env.example": {
+      "checksum": "60fad427640cc88999c796b6a63d7837"
+    },
+    ".gitignore": {
+      "checksum": "7ffe772381c22def4efbbdf94e6c3907"
+    },
+    "README.md": {
+      "checksum": "c69fd865908b41d2c2e808c5fa63301d"
+    },
+    "app.py": {
+      "checksum": "951cfd6ea62722b3e129220c27a02906"
+    },
+    "assets/The-World-Bank-group-white.png": {
+      "checksum": "596f6d13fdd22a2760464b4cc449ff24"
+    },
+    "assets/favicon.ico": {
+      "checksum": "f1e6e3c8ccc3c5683c2ceb61f79f714a"
+    },
+    "assets/fonts/FiraSans-OFL-LICENSE.txt": {
+      "checksum": "4538a5afdd18ccebd224405ffe3dee4b"
+    },
+    "assets/fonts/fira-sans-latin-300-normal.woff2": {
+      "checksum": "aeb66f4f2c7c6a47d3a4d92009525dc9"
+    },
+    "assets/fonts/fira-sans-latin-400-italic.woff2": {
+      "checksum": "022ce95a9787824d3ea819e104e5e3cc"
+    },
+    "assets/fonts/fira-sans-latin-400-normal.woff2": {
+      "checksum": "d26e1b11589f2c2744eadc0ac2ffae94"
+    },
+    "assets/fonts/fira-sans-latin-500-normal.woff2": {
+      "checksum": "9410bb8f89e52fc8df5f0aca7009947c"
+    },
+    "assets/fonts/fira-sans-latin-600-normal.woff2": {
+      "checksum": "beb3d7395726910999a3b89eb76e9a4b"
+    },
+    "assets/fonts/fira-sans-latin-700-normal.woff2": {
+      "checksum": "43eb5ca3942e0f74137d8754629fb9e6"
+    },
+    "assets/style.css": {
+      "checksum": "6b83c0e86460bdb4ecb85301f68ea0fb"
+    },
+    "callbacks.py": {
+      "checksum": "aa61955e58f02a4168b6bb96f683f026"
+    },
+    "eu_taxonomy_tagger.py": {
+      "checksum": "f407dea59addbe7e5b274f5eeabb1b76"
+    },
+    "green_budget_tagger.py": {
+      "checksum": "cb7de73cfbf677c92067270797975a00"
+    },
+    "green_budget_tagger_optimized.py": {
+      "checksum": "55bdae7a55b1774f18d1075f4aa4f469"
+    },
+    "methodology.py": {
+      "checksum": "753b26e9ed6a805e875cc8220a87b7fc"
+    },
+    "pages.py": {
+      "checksum": "16b575a817eba9609a4a382be33183f2"
+    },
+    "requirements.txt": {
+      "checksum": "be4986c5bd40d008a5838bafc065bf07"
+    },
+    "rio_marker_tagger.py": {
+      "checksum": "a100164cb7e55da3784f228022c9c097"
+    },
+    "sample_data/sample_input_budget.xlsx": {
+      "checksum": "f33d3e06e35bb4242a39a41943592fb3"
+    },
+    "shared/__init__.py": {
+      "checksum": "b0c192d16c05a6d603fde32e8840b03e"
+    },
+    "shared/cofog_mapping.json": {
+      "checksum": "39a2734b2fdc119bf9de90958e097d5c"
+    },
+    "shared/eu_taxonomy_keywords.py": {
+      "checksum": "70424610e9993a310430ba2b39217845"
+    },
+    "shared/rio_keywords.py": {
+      "checksum": "eb5965cdf15bac5edb8cc7c14008f8ea"
+    },
+    "src/__init__.py": {
+      "checksum": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "src/constants.py": {
+      "checksum": "fb80ef44f038960fa1b3fea4778900ed"
+    },
+    "src/pipeline.py": {
+      "checksum": "511addf37e52973b8c81c92fd4115746"
+    },
+    "src/queries.py": {
+      "checksum": "9e82dd3650be0ded9a514b76b07cd459"
+    },
+    "src/utils.py": {
+      "checksum": "da2ce12cbbe37fdbbb75ea7642558a25"
+    }
+  }
+}
