@@ -15,25 +15,19 @@
   },
   "files": {
     ".env.example": {
-      "checksum": "60fad427640cc88999c796b6a63d7837"
+      "checksum": "5e92c81be531a72037f18bf34a16c189"
     },
     ".gitignore": {
-      "checksum": "7ffe772381c22def4efbbdf94e6c3907"
-    },
-    "README.md": {
-      "checksum": "c69fd865908b41d2c2e808c5fa63301d"
+      "checksum": "f6af68eff8fb0e943cec2911604e203d"
     },
     "app.py": {
-      "checksum": "951cfd6ea62722b3e129220c27a02906"
+      "checksum": "f28ecdc3653511bd7c8b385f3824e1e2"
     },
-    "assets/The-World-Bank-group-white.png": {
-      "checksum": "596f6d13fdd22a2760464b4cc449ff24"
+    "assets/climate-finance.svg": {
+      "checksum": "15604e0d4993ed40ab7b848c4009de17"
     },
     "assets/favicon.ico": {
       "checksum": "f1e6e3c8ccc3c5683c2ceb61f79f714a"
-    },
-    "assets/fonts/FiraSans-OFL-LICENSE.txt": {
-      "checksum": "4538a5afdd18ccebd224405ffe3dee4b"
     },
     "assets/fonts/fira-sans-latin-300-normal.woff2": {
       "checksum": "aeb66f4f2c7c6a47d3a4d92009525dc9"
@@ -53,32 +47,32 @@
     "assets/fonts/fira-sans-latin-700-normal.woff2": {
       "checksum": "43eb5ca3942e0f74137d8754629fb9e6"
     },
+    "assets/fonts/FiraSans-OFL-LICENSE.txt": {
+      "checksum": "4538a5afdd18ccebd224405ffe3dee4b"
+    },
     "assets/style.css": {
-      "checksum": "6b83c0e86460bdb4ecb85301f68ea0fb"
+      "checksum": "d67c8c63c00780d1953a7d8111dae8d2"
+    },
+    "assets/The-World-Bank-group-white.png": {
+      "checksum": "596f6d13fdd22a2760464b4cc449ff24"
+    },
+    "Budget Tagging.docx": {
+      "checksum": "042fbc36d32a224656c8b785fecc9def"
     },
     "callbacks.py": {
-      "checksum": "aa61955e58f02a4168b6bb96f683f026"
+      "checksum": "5db5a844a670cf3d511e77f91be30e9d"
     },
-    "eu_taxonomy_tagger.py": {
-      "checksum": "f407dea59addbe7e5b274f5eeabb1b76"
+    "CLIMATE BUDGET TAGGING REPORT.docx": {
+      "checksum": "b80b3b6dc1c24c4ac7289ec16f701e9d"
     },
-    "green_budget_tagger.py": {
-      "checksum": "cb7de73cfbf677c92067270797975a00"
+    "README.md": {
+      "checksum": "c66a2fe76b9d629761c73b10f615dfb5"
     },
-    "green_budget_tagger_optimized.py": {
-      "checksum": "55bdae7a55b1774f18d1075f4aa4f469"
-    },
-    "methodology.py": {
-      "checksum": "753b26e9ed6a805e875cc8220a87b7fc"
-    },
-    "pages.py": {
-      "checksum": "16b575a817eba9609a4a382be33183f2"
+    "reports/Climate_Budget_Report_Global_2026.docx": {
+      "checksum": "92e51f4e83dc41998aab6bd71361a825"
     },
     "requirements.txt": {
-      "checksum": "be4986c5bd40d008a5838bafc065bf07"
-    },
-    "rio_marker_tagger.py": {
-      "checksum": "a100164cb7e55da3784f228022c9c097"
+      "checksum": "55a2a2479a99afd186919ecef4b2ae07"
     },
     "sample_data/sample_input_budget.xlsx": {
       "checksum": "f33d3e06e35bb4242a39a41943592fb3"
@@ -92,23 +86,56 @@
     "shared/eu_taxonomy_keywords.py": {
       "checksum": "70424610e9993a310430ba2b39217845"
     },
+    "shared/metrics.py": {
+      "checksum": "fc65941260b5bf476b23f5cfc551fd43"
+    },
+    "shared/report_generator.py": {
+      "checksum": "f58f17ed0f89702b5d537f0b0be50c62"
+    },
     "shared/rio_keywords.py": {
       "checksum": "eb5965cdf15bac5edb8cc7c14008f8ea"
+    },
+    "shared/storage.py": {
+      "checksum": "324612e9de8b1e3fdd6135ba890208ce"
+    },
+    "shared/visualizations.py": {
+      "checksum": "311a5b8aa9dadc2b3c2576b86cfdb6ef"
     },
     "src/__init__.py": {
       "checksum": "d41d8cd98f00b204e9800998ecf8427e"
     },
     "src/constants.py": {
-      "checksum": "fb80ef44f038960fa1b3fea4778900ed"
+      "checksum": "b6b85bcedd24e3db45612fbc6c375e35"
+    },
+    "src/methodology.py": {
+      "checksum": "a17e4d477d6931c0b8f8c900e26378b7"
+    },
+    "src/pages.py": {
+      "checksum": "d3cf21270a2c08c9dd3ed1e8a2054ccd"
     },
     "src/pipeline.py": {
-      "checksum": "511addf37e52973b8c81c92fd4115746"
+      "checksum": "20c4357dba8a78d85caf54994f16b2e0"
     },
     "src/queries.py": {
-      "checksum": "9e82dd3650be0ded9a514b76b07cd459"
+      "checksum": "0f5733b6a601d8d47d18cc2b61742bbf"
+    },
+    "src/taxonomy_method/__init__.py": {
+      "checksum": "9485f44309131d8f0926e60ac2c8ea36"
+    },
+    "src/taxonomy_method/eu_taxonomy_tagger.py": {
+      "checksum": "0b0567b8abe5ae5d0ea6aa06c6489d91"
+    },
+    "src/taxonomy_method/green_budget_tagger.py": {
+      "checksum": "cb7de73cfbf677c92067270797975a00"
+    },
+    "src/taxonomy_method/green_budget_tagger_optimized.py": {
+      "checksum": "096436aaa950be8ad986c9d94fe5ef24"
+    },
+    "src/taxonomy_method/rio_marker_tagger.py": {
+      "checksum": "651a9c9f0c2a998b0e02beec32c81206"
     },
     "src/utils.py": {
-      "checksum": "da2ce12cbbe37fdbbb75ea7642558a25"
+      "checksum": "dfed3853e0df1e88f42de8b8731aa46c"
     }
   }
 }

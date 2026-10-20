@@ -151,11 +151,11 @@ code, pre { font-family: var(--mono); }
 .section-title { font-size: 26px; font-weight: 600; color: var(--navy); }
 .section-lede { margin-top: 8px; color: var(--ink-soft); max-width: 70ch; }
 
-/* Overview hero: dotted world map on the right, fading into the navy towards the text */
+/* Overview hero: climate-finance line illustration on the right, fading into the navy towards the text */
 .hero { position: relative; overflow: hidden; background: var(--navy); color: #fff;
   min-height: calc(100vh - var(--header-h)); display: flex; align-items: center; }
-.hero::before { content: ""; position: absolute; inset: 0 -6% 0 32%; background: var(--hero-map) center / contain no-repeat;
-  opacity: .55; -webkit-mask-image: linear-gradient(to right, transparent, #000 35%); mask-image: linear-gradient(to right, transparent, #000 35%);
+.hero::before { content: ""; position: absolute; inset: 6% 2% 6% 40%; background: var(--hero-map) center / contain no-repeat;
+  opacity: .8; -webkit-mask-image: linear-gradient(to right, transparent, #000 25%); mask-image: linear-gradient(to right, transparent, #000 25%);
   pointer-events: none; }
 .hero-inner { position: relative; width: 100%; max-width: calc(var(--content-w) + 2 * var(--gutter)); margin: 0 auto;
   padding: 72px var(--gutter) 88px; }

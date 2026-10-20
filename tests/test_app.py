@@ -57,7 +57,7 @@ def _callback_ids():
 @pytest.fixture()
 def app_module(tmp_path, monkeypatch):
     monkeypatch.setenv(C.ENV_WORK_DIR, str(tmp_path / "work"))
-    for var in (C.ENV_SERVER_HOSTNAME, C.ENV_HOST, C.ENV_HTTP_PATH, C.ENV_CLIENT_ID, C.ENV_CLIENT_SECRET, C.ENV_TOKEN):
+    for var in (C.ENV_SERVER_HOSTNAME, C.ENV_HOST, C.ENV_HTTP_PATH, C.ENV_CLIENT_ID, C.ENV_CLIENT_SECRET):
         monkeypatch.delenv(var, raising=False)
     from tests import sqlite_backend
     monkeypatch.setenv(C.ENV_CACHE_TTL, "0")
@@ -68,7 +68,7 @@ def app_module(tmp_path, monkeypatch):
 
 
 def test_every_callback_id_exists_in_a_layout(app_module):
-    import pages
+    from src import pages
     jid = P.new_job_id()
     shutil.copy(SAMPLE, P.job_file(jid, "upload.xlsx"))
     info = P.inspect_upload(SAMPLE, SAMPLE.name)
@@ -90,7 +90,7 @@ def test_every_callback_id_exists_in_a_layout(app_module):
 
 
 def test_all_pages_render(app_module):
-    import pages
+    from src import pages
     for page in (pages.home_layout("map.svg"), pages.tag_layout(None, None), pages.dashboard_layout(), pages.data_layout(),
                  pages.methodology_layout(), pages.not_found_layout()):
         assert page is not None
@@ -105,7 +105,7 @@ def test_routing_keys_are_unique_and_known():
 
 
 def test_graph_helper_gives_the_container_the_figure_height():
-    import pages
+    from src import pages
     fig = u.fig_bar_h(["a", "b", "c"], [0.1, 0.2, 0.3], pct=True)
     g = pages.graph(fig)
     assert isinstance(g, dcc.Graph) and g.style["height"] == "%dpx" % fig.layout.height

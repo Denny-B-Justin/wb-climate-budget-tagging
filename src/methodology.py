@@ -386,8 +386,8 @@ def layout() -> html.Div:
                          ["EU Taxonomy", "EU classification of environmentally sustainable activities across six objectives (Regulation (EU) 2020/852)."],
                      ]),
                      _p("Sources: OECD DAC Rio Markers for climate change; Regulation (EU) 2020/852 (Taxonomy Regulation); UN Classification of the "
-                        "Functions of Government (COFOG); the tagging rules in this repository (", html.Code("rio_marker_tagger.py"), ", ",
-                        html.Code("eu_taxonomy_tagger.py"), ", ", html.Code("shared/"), ").", cls="doc-note"),
+                        "Functions of Government (COFOG); the tagging rules in this repository (", html.Code("src/taxonomy_method/rio_marker_tagger.py"), ", ",
+                        html.Code("src/taxonomy_method/eu_taxonomy_tagger.py"), ", ", html.Code("shared/"), ").", cls="doc-note"),
                      ),
             ]),
         ]),

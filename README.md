@@ -10,14 +10,15 @@ objectives, lets the analyst review the result, and saves it to two **global Uni
   on that page are produced live by the same tagger code.
 
 There is **no LLM in this app**: tagging is rule-based and deterministic, and nothing is sent to an external service.
-The tagging engine is the original code, **copied without any change** to the project root:
-`green_budget_tagger.py`, `green_budget_tagger_optimized.py`, `rio_marker_tagger.py`, `eu_taxonomy_tagger.py` and `shared/`
-(without the Streamlit-only modules). Everything else lives in `src/` and the Dash layer.
+The tagging engine is the original code in `src/taxonomy_method/` (`green_budget_tagger.py`, `green_budget_tagger_optimized.py`,
+`rio_marker_tagger.py`, `eu_taxonomy_tagger.py`; only their imports were adjusted to the package path) plus the keyword lists in
+`shared/`. Everything else lives in `src/` and the Dash layer.
 
 ```
 app.py            Dash object, page frame, routing (?page=home|tag|dashboard|data|methodologies)
 callbacks.py      all callbacks
-pages.py          layouts            methodology.py   the Methodologies page
+src/pages.py      layouts            src/methodology.py   the Methodologies page
+src/taxonomy_method/  the tagging engine (Rio Markers, EU Taxonomy)
 src/constants.py  names, table schemas, colours, country list, environment-variable names
 src/utils.py      formatting, charts, reusable components, Excel export
 src/queries.py    ALL storage access (Unity Catalog via Databricks SQL; the tests use a SQLite stand-in)
@@ -69,13 +70,13 @@ GROUP BY country_iso3, year;
 
 | Variable | Meaning |
 |---|---|
-| `DATABRICKS_SERVER_HOSTNAME` (or `DATABRICKS_HOST`), `DATABRICKS_HTTP_PATH`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET` | Same names as the Country Benchmarking Dashboard, so one service principal serves both. `DATABRICKS_TOKEN` works for local development. |
+| `DATABRICKS_SERVER_HOSTNAME` (or `DATABRICKS_HOST`), `DATABRICKS_HTTP_PATH`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET` | Same names as the Country Benchmarking Dashboard, so one service principal serves both. The app signs in as that service principal (OAuth); no personal token is used. |
 | `CBT_CATALOG`, `CBT_SCHEMA` | Where the two tables live (no defaults in code; `.env.example` shows `prd_mega` / `sgpbpi163`). |
 | `CBT_AUTO_CREATE_TABLES` | `true` (default) creates missing tables and adds missing columns at start-up. |
 | `CBT_INSERT_MODE`, `CBT_INSERT_CHUNK_ROWS` | `json` (default; one parameter per statement, thousands of rows each) or `values` (portable multi-row VALUES). |
 | `CBT_ADMIN_USERS` | Comma-separated e-mails allowed to soft-delete/restore. Empty = every signed-in user. The user is read from `X-Forwarded-Email` / Posit Connect credentials headers. |
 | `CBT_MAX_UPLOAD_MB`, `CBT_MAX_ROWS`, `CBT_WORK_DIR` | Upload limits and where background-job files live. |
-| `QUERY_CACHE_TTL_SECONDS`, `QUERY_CACHE_MAX_ENTRIES` | Read cache for the Dashboard/Data pages (same names as the CBD app). |
+| `QUERY_CACHE_TTL_SECONDS`, `QUERY_CACHE_MAX_ENTRIES` | Read cache for the Dashboard / Download data pages (same names as the CBD app). |
 
 ### Unity Catalog permissions
 

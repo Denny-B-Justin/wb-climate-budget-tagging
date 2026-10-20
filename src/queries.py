@@ -116,7 +116,6 @@ class Config(object):
         self.http_path = (env(C.ENV_HTTP_PATH) or "").strip()
         self.client_id = (env(C.ENV_CLIENT_ID) or "").strip()
         self.client_secret = (env(C.ENV_CLIENT_SECRET) or "").strip()
-        self.token = (env(C.ENV_TOKEN) or "").strip()
         self.catalog = (env(C.ENV_CATALOG) or "").strip()
         self.schema = (env(C.ENV_SCHEMA) or "").strip()
 
@@ -133,8 +132,10 @@ class Config(object):
             missing.append(C.ENV_SERVER_HOSTNAME)
         if not self.http_path:
             missing.append(C.ENV_HTTP_PATH)
-        if not self.token and not (self.client_id and self.client_secret):
-            missing.append("%s + %s (or %s)" % (C.ENV_CLIENT_ID, C.ENV_CLIENT_SECRET, C.ENV_TOKEN))
+        if not self.client_id:
+            missing.append(C.ENV_CLIENT_ID)
+        if not self.client_secret:
+            missing.append(C.ENV_CLIENT_SECRET)
         if not self.catalog:
             missing.append(C.ENV_CATALOG)
         if not self.schema:
@@ -471,20 +472,17 @@ class _DatabricksBackend(_Backend):
             raise ConfigError("databricks-sql-connector is not installed (pip install databricks-sql-connector).") from exc
         cfg = self.cfg
         kwargs: Dict[str, Any] = dict(server_hostname=cfg.server_hostname, http_path=cfg.http_path)
-        if cfg.client_id and cfg.client_secret:
-            try:
-                from databricks.sdk.core import Config as SdkConfig, oauth_service_principal
-            except ImportError as exc:                       # pragma: no cover
-                raise ConfigError("databricks-sdk is not installed (pip install databricks-sdk).") from exc
+        try:
+            from databricks.sdk.core import Config as SdkConfig, oauth_service_principal
+        except ImportError as exc:                           # pragma: no cover
+            raise ConfigError("databricks-sdk is not installed (pip install databricks-sdk).") from exc
 
-            def credentials_provider():
-                sdk_cfg = SdkConfig(host="https://%s" % cfg.server_hostname,
-                                    client_id=cfg.client_id, client_secret=cfg.client_secret)
-                return oauth_service_principal(sdk_cfg)
+        def credentials_provider():                          # OAuth machine-to-machine login as the service principal
+            sdk_cfg = SdkConfig(host="https://%s" % cfg.server_hostname,
+                                client_id=cfg.client_id, client_secret=cfg.client_secret)
+            return oauth_service_principal(sdk_cfg)
 
-            kwargs["credentials_provider"] = credentials_provider
-        else:
-            kwargs["access_token"] = cfg.token
+        kwargs["credentials_provider"] = credentials_provider
         return dbsql.connect(**kwargs)
 
     @contextlib.contextmanager

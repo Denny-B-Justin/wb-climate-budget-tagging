@@ -25,7 +25,7 @@ APP_NAME = "Climate Budget Tagging Tool"
 APP_SHORT = "CBT"
 APP_TAGLINE = "Tag government budget lines against the Rio Markers and the EU Taxonomy"
 METHODOLOGY_VERSION = "1.0"          # bump when keyword lists or rules change; stored on every row
-SUITE_URL = "https://pim-pam.net/"
+SUITE_URL = "https://datanalytics.worldbank.org/wkpgf-pimpam-digital-tools/"
 SUITE_NAME = "PIM-PAM"
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -64,7 +64,6 @@ ENV_HOST = "DATABRICKS_HOST"                    # set by Databricks Apps; used w
 ENV_HTTP_PATH = "DATABRICKS_HTTP_PATH"
 ENV_CLIENT_ID = "DATABRICKS_CLIENT_ID"
 ENV_CLIENT_SECRET = "DATABRICKS_CLIENT_SECRET"
-ENV_TOKEN = "DATABRICKS_TOKEN"                  # personal access token (local development only)
 
 ENV_CATALOG = "CBT_CATALOG"                     # Unity Catalog catalog that holds the tables
 ENV_SCHEMA = "CBT_SCHEMA"                       # ... and the schema

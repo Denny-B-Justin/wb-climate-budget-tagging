@@ -20,8 +20,8 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 from dash import dcc, html
 
-import methodology
 from src import constants as C
+from src import methodology
 from src import pipeline as P
 from src import queries as q
 from src import utils as u

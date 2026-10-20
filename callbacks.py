@@ -24,8 +24,8 @@ from dash import ALL, Input, Output, State, callback, ctx, dcc, get_asset_url, h
 from dash.exceptions import PreventUpdate
 from flask import request
 
-import pages
 from src import constants as C
+from src import pages
 from src import pipeline as P
 from src import queries as q
 from src import utils as u
@@ -68,7 +68,7 @@ def render_page(search, job, upload):
     page = _page_key(search)
     logo = get_asset_url("The-World-Bank-group-white.png")
     if page == C.PAGE_HOME:
-        body = pages.home_layout(get_asset_url("world-dots.svg"))
+        body = pages.home_layout(get_asset_url("climate-finance.svg"))
     elif page == C.PAGE_TAG:
         P.cleanup_old_jobs()
         body = pages.tag_layout(_job_id(job), upload if _job_id(job) else None)

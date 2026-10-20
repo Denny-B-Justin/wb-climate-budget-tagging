@@ -43,16 +43,16 @@ import pandas as pd
 
 from . import constants as C
 
-# The tagger modules sit in the project root (unchanged); make them importable from anywhere.
+# The project root must be importable so `src.taxonomy_method` and `shared` resolve from anywhere.
 if str(C.ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(C.ROOT_DIR))
 
-from green_budget_tagger import (                                    # noqa: E402  (unchanged module)
+from src.taxonomy_method.green_budget_tagger import (                                    # noqa: E402  (unchanged module)
     ClimateTag, Confidence, EnvironmentalObjective, ExcelProcessor, TaggingResult,
 )
-from green_budget_tagger_optimized import DeduplicationHelper       # noqa: E402  (unchanged module)
-from rio_marker_tagger import RioMarkerResult, RioMarkerTagger      # noqa: E402  (unchanged module)
-from eu_taxonomy_tagger import EUTaxonomyResult, EUTaxonomyTagger   # noqa: E402  (unchanged module)
+from src.taxonomy_method.green_budget_tagger_optimized import DeduplicationHelper       # noqa: E402  (unchanged module)
+from src.taxonomy_method.rio_marker_tagger import RioMarkerResult, RioMarkerTagger      # noqa: E402  (unchanged module)
+from src.taxonomy_method.eu_taxonomy_tagger import EUTaxonomyResult, EUTaxonomyTagger   # noqa: E402  (unchanged module)
 
 log = logging.getLogger(__name__)
 

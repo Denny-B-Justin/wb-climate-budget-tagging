@@ -460,7 +460,7 @@ def build_footer(wb_logo: Optional[str] = None) -> html.Footer:
                    "public investment and asset management."),
         ]),
         html.Div(className="footer-links", children=[
-            html.A("pim-pam.net", href=C.SUITE_URL, target="_blank", rel="noopener noreferrer"),
+            html.A("PIM-PAM", href=C.SUITE_URL, target="_blank", rel="noopener noreferrer"),
         ]),
     ]))
 

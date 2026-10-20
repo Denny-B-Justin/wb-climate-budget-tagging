@@ -206,7 +206,7 @@ def test_json_chunking_respects_limits():
 
 
 def test_config_validation(monkeypatch, caplog):
-    for var in (C.ENV_SERVER_HOSTNAME, C.ENV_HOST, C.ENV_HTTP_PATH, C.ENV_CLIENT_ID, C.ENV_CLIENT_SECRET, C.ENV_TOKEN,
+    for var in (C.ENV_SERVER_HOSTNAME, C.ENV_HOST, C.ENV_HTTP_PATH, C.ENV_CLIENT_ID, C.ENV_CLIENT_SECRET,
                 C.ENV_CATALOG, C.ENV_SCHEMA):
         monkeypatch.delenv(var, raising=False)
     q.reset()
@@ -222,7 +222,8 @@ def test_config_validation(monkeypatch, caplog):
     q.reset()
     monkeypatch.setenv(C.ENV_SERVER_HOSTNAME, "adb-1.azuredatabricks.net")
     monkeypatch.setenv(C.ENV_HTTP_PATH, "/sql/1.0/warehouses/abc")
-    monkeypatch.setenv(C.ENV_TOKEN, "dapi-x")
+    monkeypatch.setenv(C.ENV_CLIENT_ID, "sp-id")
+    monkeypatch.setenv(C.ENV_CLIENT_SECRET, "sp-secret")
     monkeypatch.setenv(C.ENV_CATALOG, "prd; DROP TABLE x")
     monkeypatch.setenv(C.ENV_SCHEMA, "sch")
     with pytest.raises(q.ConfigError, match="data service"):
@@ -239,7 +240,8 @@ def test_databricks_sql_text(monkeypatch):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv(C.ENV_SERVER_HOSTNAME, "https://adb-1.azuredatabricks.net/")
     monkeypatch.setenv(C.ENV_HTTP_PATH, "/sql/1.0/warehouses/abc")
-    monkeypatch.setenv(C.ENV_TOKEN, "dapi-x")
+    monkeypatch.setenv(C.ENV_CLIENT_ID, "sp-id")
+    monkeypatch.setenv(C.ENV_CLIENT_SECRET, "sp-secret")
     monkeypatch.setenv(C.ENV_CATALOG, "prd_mega")
     monkeypatch.setenv(C.ENV_SCHEMA, "sgpbpi163")
     q.reset()

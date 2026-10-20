@@ -12,7 +12,7 @@ import logging
 from dataclasses import dataclass
 
 # Import from existing tagger
-from green_budget_tagger import (
+from src.taxonomy_method.green_budget_tagger import (
     EnvironmentalObjective,
     TaggingResult,
     LLMTagger,

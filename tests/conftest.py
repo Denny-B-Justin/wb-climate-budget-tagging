@@ -20,7 +20,7 @@ from src import queries as q            # noqa: E402
 def store(tmp_path, monkeypatch):
     """Fresh SQLite database + clean module state for each test."""
     from tests import sqlite_backend
-    for var in (C.ENV_SERVER_HOSTNAME, C.ENV_HOST, C.ENV_HTTP_PATH, C.ENV_CLIENT_ID, C.ENV_CLIENT_SECRET, C.ENV_TOKEN,
+    for var in (C.ENV_SERVER_HOSTNAME, C.ENV_HOST, C.ENV_HTTP_PATH, C.ENV_CLIENT_ID, C.ENV_CLIENT_SECRET,
                 C.ENV_CATALOG, C.ENV_SCHEMA):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv(C.ENV_CACHE_TTL, "0")

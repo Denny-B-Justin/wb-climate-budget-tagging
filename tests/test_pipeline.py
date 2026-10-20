@@ -102,8 +102,8 @@ def _prepared():
 
 
 def test_dedup_is_exactly_equivalent_to_row_by_row_tagging():
-    from rio_marker_tagger import RioMarkerTagger
-    from eu_taxonomy_tagger import EUTaxonomyTagger
+    from src.taxonomy_method.rio_marker_tagger import RioMarkerTagger
+    from src.taxonomy_method.eu_taxonomy_tagger import EUTaxonomyTagger
     prep = _prepared()
     tagged = P.tag_lines(prep.lines, P.TaggingSettings())
     lines = prep.lines
@@ -153,7 +153,7 @@ def test_extra_user_columns_cannot_change_results():
 
 def test_one_failing_line_does_not_stop_the_batch(monkeypatch):
     prep = _prepared()
-    from rio_marker_tagger import RioMarkerTagger
+    from src.taxonomy_method.rio_marker_tagger import RioMarkerTagger
     orig = RioMarkerTagger.tag_row
     calls = {"n": 0}
 
@@ -233,7 +233,7 @@ def test_summaries_match_the_original_streamlit_weights():
 # ------------------------------------------------------------------------------------------- jobs
 def test_end_to_end_jobs(tmp_path, monkeypatch):
     monkeypatch.setenv(C.ENV_WORK_DIR, str(tmp_path / "work"))
-    for var in (C.ENV_SERVER_HOSTNAME, C.ENV_HTTP_PATH, C.ENV_CLIENT_ID, C.ENV_CLIENT_SECRET, C.ENV_TOKEN):
+    for var in (C.ENV_SERVER_HOSTNAME, C.ENV_HTTP_PATH, C.ENV_CLIENT_ID, C.ENV_CLIENT_SECRET):
         monkeypatch.delenv(var, raising=False)
     from tests import sqlite_backend
     monkeypatch.setenv(C.ENV_CACHE_TTL, "0")

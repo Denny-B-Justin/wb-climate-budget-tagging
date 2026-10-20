@@ -19,8 +19,8 @@ def main() -> None:
     ap.add_argument("--schema", required=True)
     args = ap.parse_args()
     # Only to satisfy the configuration check; the statements are built, never sent.
-    os.environ.update(CBT_BACKEND="databricks", CBT_CATALOG=args.catalog, CBT_SCHEMA=args.schema,
-                      DATABRICKS_SERVER_HOSTNAME="unused.example.net", DATABRICKS_HTTP_PATH="/unused", DATABRICKS_TOKEN="unused")
+    os.environ.update(CBT_CATALOG=args.catalog, CBT_SCHEMA=args.schema, DATABRICKS_SERVER_HOSTNAME="unused.example.net",
+                      DATABRICKS_HTTP_PATH="/unused", DATABRICKS_CLIENT_ID="unused", DATABRICKS_CLIENT_SECRET="unused")
     from src import constants as C
     from src import queries as q
     q.reset()
