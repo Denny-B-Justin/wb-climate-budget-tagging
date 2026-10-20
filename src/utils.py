@@ -13,9 +13,6 @@ Python 3.9 compatible.
 from __future__ import annotations
 
 import io
-import json
-import math
-import os
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -71,9 +68,6 @@ def fmt_dt(v: Any) -> str:
     return ts.strftime("%d %b %Y %H:%M UTC")
 
 
-def short_id(batch_id: Any, n: int = 15) -> str:
-    s = "" if is_missing(batch_id) else str(batch_id)
-    return s if len(s) <= n else s[:n] + "…"
 
 
 def plural(n: int, one: str, many: Optional[str] = None) -> str:
@@ -91,33 +85,8 @@ def year_span(years: Iterable[int]) -> str:
 # Who is the user?  (authentication is done by the hosting platform)
 # ══════════════════════════════════════════════════════════════════════════
 
-def actor_from_headers(headers: Any) -> str:
-    """
-    Best-effort identity from the reverse proxy: Databricks Apps (X-Forwarded-Email / -Preferred-Username)
-    or Posit Connect (RStudio-Connect-Credentials JSON). Empty string when unknown - the form then asks.
-    """
-    try:
-        for name in ("X-Forwarded-Email", "X-Forwarded-Preferred-Username", "X-Forwarded-User"):
-            val = headers.get(name)
-            if val:
-                return str(val).strip()[:120]
-        cred = headers.get("RStudio-Connect-Credentials") or headers.get("Rstudio-Connect-Credentials")
-        if cred:
-            user = json.loads(cred).get("user")
-            if user:
-                return str(user).strip()[:120]
-    except Exception:                                        # a malformed header must never break a page
-        pass
-    return ""
 
 
-def can_manage(actor: str) -> bool:
-    """Soft-delete / restore are open to everyone unless CBT_ADMIN_USERS (comma list of e-mails) is set."""
-    raw = os.getenv(C.ENV_ADMIN_USERS, "").strip()
-    if not raw:
-        return True
-    allowed = {x.strip().lower() for x in raw.split(",") if x.strip()}
-    return (actor or "").strip().lower() in allowed
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -220,25 +189,6 @@ def _bar_marker(color: Any) -> Dict[str, Any]:
     return dict(color=color, cornerradius=4, line=dict(width=0))
 
 
-def fig_rio_levels(summary: Dict[str, Any]) -> go.Figure:
-    """One 100% bar split into Rio levels 2 / 1 / 0 (ordinal ramp, direct labels)."""
-    by = summary.get("by_marker") or {}
-    total = sum(by.values()) or 1.0
-    unit = "amount" if summary.get("basis") == "amount" else "lines"
-    fig = go.Figure()
-    for level in (2, 1, 0):
-        share = by.get(level, 0.0) / total
-        fig.add_trace(go.Bar(
-            y=[""], x=[share], orientation="h", name="%s - %s" % (level, C.RIO_LABELS[level]),
-            marker=dict(color=C.RIO_COLORS[level], line=dict(color="white", width=2)),
-            text=["%s %s" % (C.RIO_LABELS[level], fmt_pct(share, 0))] if share >= 0.07 else [""],
-            textposition="inside", insidetextanchor="middle",
-            textfont=dict(color="white" if level else C.INK, size=12, family=C.FONT_STACK),
-            hovertemplate="Rio marker %d (%s)<br>%%{x:.1%%} of %s<extra></extra>" % (level, C.RIO_LABELS[level], unit)))
-    fig.update_layout(barmode="stack", bargap=0.1)
-    fig.update_xaxes(range=[0, 1], tickformat=".0%", title="Share of %s" % unit)
-    fig.update_yaxes(visible=False)
-    return _base_layout(fig, 170, legend=True, legend_top=True, margin=dict(l=8, r=16, t=30, b=8))
 
 
 def fig_donut(slices: Sequence[Tuple[str, float, str]], unit: str = "amount", height: int = 300) -> go.Figure:

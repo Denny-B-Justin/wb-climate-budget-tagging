@@ -6,11 +6,24 @@ and give the app's service principal only SELECT + MODIFY.
 Nothing is executed and no connection is made.
 """
 import argparse
-import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from src import constants as C  # noqa: E402
+
+
+def _lit(text: str) -> str:
+    """Escape a string for a single-quoted Spark SQL literal."""
+    return text.replace("\\", "\\\\").replace("'", "\\'")
+
+
+def create_table_sql(catalog: str, schema: str, kind: str) -> str:
+    cols = ",\n  ".join("`%s` %s COMMENT '%s'" % (c.name, c.sql, _lit(c.doc)) for c in C.TABLE_SCHEMAS[kind])
+    return ("CREATE TABLE IF NOT EXISTS `%s`.`%s`.`%s` (\n  %s\n) USING DELTA COMMENT '%s' "
+            "TBLPROPERTIES ('delta.autoOptimize.optimizeWrite' = 'true', 'delta.autoOptimize.autoCompact' = 'true')"
+            % (catalog, schema, C.TABLE_NAMES[kind], cols, _lit(C.TABLE_COMMENTS[kind])))
 
 
 def main() -> None:
@@ -18,17 +31,10 @@ def main() -> None:
     ap.add_argument("--catalog", required=True)
     ap.add_argument("--schema", required=True)
     args = ap.parse_args()
-    # Only to satisfy the configuration check; the statements are built, never sent.
-    os.environ.update(CBT_CATALOG=args.catalog, CBT_SCHEMA=args.schema, DATABRICKS_SERVER_HOSTNAME="unused.example.net",
-                      DATABRICKS_HTTP_PATH="/unused", DATABRICKS_CLIENT_ID="unused", DATABRICKS_CLIENT_SECRET="unused")
-    from src import constants as C
-    from src import queries as q
-    q.reset()
-    backend = q._get_backend()
     print("-- Climate Budget Tagging: global tables (methodology version %s)" % C.METHODOLOGY_VERSION)
     print("-- Grants for the app's service principal: USE CATALOG, USE SCHEMA, SELECT, MODIFY on these tables\n")
     for kind in C.KINDS:
-        print(backend.create_table_sql(kind) + ";\n")
+        print(create_table_sql(args.catalog, args.schema, kind) + ";\n")
 
 
 if __name__ == "__main__":

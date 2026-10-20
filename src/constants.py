@@ -54,33 +54,13 @@ PAGES = [
 DEFAULT_PAGE = PAGE_HOME
 
 # ══════════════════════════════════════════════════════════════════════════
-# Environment variables (read lazily by queries.py / utils.py - never at import)
+# Environment variables (uploads / work folder; the Databricks ones are read in queries.py)
 # ══════════════════════════════════════════════════════════════════════════
-# Same names as the CBD app for everything that is shared, so one .env / one
-# Posit Connect variable set can serve both apps.
 
-ENV_SERVER_HOSTNAME = "DATABRICKS_SERVER_HOSTNAME"
-ENV_HOST = "DATABRICKS_HOST"                    # set by Databricks Apps; used when SERVER_HOSTNAME is absent
-ENV_HTTP_PATH = "DATABRICKS_HTTP_PATH"
-ENV_CLIENT_ID = "DATABRICKS_CLIENT_ID"
-ENV_CLIENT_SECRET = "DATABRICKS_CLIENT_SECRET"
-
-ENV_CATALOG = "CBT_CATALOG"                     # Unity Catalog catalog that holds the tables
-ENV_SCHEMA = "CBT_SCHEMA"                       # ... and the schema
-ENV_AUTO_CREATE = "CBT_AUTO_CREATE_TABLES"      # "true" (default) creates missing tables on start
-ENV_INSERT_MODE = "CBT_INSERT_MODE"             # "json" (default, fast) | "values" (portable fallback)
-ENV_INSERT_CHUNK = "CBT_INSERT_CHUNK_ROWS"
-ENV_CACHE_TTL = "QUERY_CACHE_TTL_SECONDS"       # same name as the CBD app
-ENV_CACHE_MAX = "QUERY_CACHE_MAX_ENTRIES"
 ENV_WORK_DIR = "CBT_WORK_DIR"                   # where uploaded files / job state live
 ENV_MAX_UPLOAD_MB = "CBT_MAX_UPLOAD_MB"
 ENV_MAX_ROWS = "CBT_MAX_ROWS"
-ENV_ADMIN_USERS = "CBT_ADMIN_USERS"             # optional comma list of e-mails allowed to soft-delete / restore
-ENV_DEBUG = "CBT_DEBUG"
 
-DEFAULT_CACHE_TTL = 60               # seconds; the writer's own process is invalidated immediately
-DEFAULT_CACHE_MAX = 128
-DEFAULT_INSERT_CHUNK_ROWS = 1500
 DEFAULT_MAX_UPLOAD_MB = 60
 DEFAULT_MAX_ROWS = 500_000
 
@@ -97,6 +77,14 @@ TABLE_NAMES = {
     KIND_EU: TABLE_PREFIX + "global_eu_taxonomy",
 }
 KIND_LABELS = {KIND_RIO: "Rio Markers", KIND_EU: "EU Taxonomy"}
+
+# Fully qualified Unity Catalog tables (created once by an admin; the app only reads and writes rows)
+CATALOG, SCHEMA = "prd_mega", "sgpbpi163"
+TABLES = {kind: "`%s`.`%s`.`%s`" % (CATALOG, SCHEMA, name) for kind, name in TABLE_NAMES.items()}
+
+# Query cache tuning (same variable names as GoAT)
+QUERY_CACHE_TTL_SECONDS = int(os.getenv("QUERY_CACHE_TTL_SECONDS", "300"))
+QUERY_CACHE_MAX_ENTRIES = int(os.getenv("QUERY_CACHE_MAX_ENTRIES", "256"))
 TABLE_COMMENTS = {
     KIND_RIO: "Climate budget tagging - Rio Markers (0/1/2) per budget line. One row per source line; "
               "validity=TRUE marks the current version for a (country_iso3, year).",
@@ -326,12 +314,6 @@ COUNTRY_OPTIONS = [{"label": "%s (%s)" % (name, iso), "value": iso} for name, is
 # ══════════════════════════════════════════════════════════════════════════
 
 
-def env_flag(name: str, default: bool = False) -> bool:
-    """Read a boolean environment variable ("1/true/yes/on" are true)."""
-    raw = os.getenv(name)
-    if raw is None or raw.strip() == "":
-        return default
-    return raw.strip().lower() in {"1", "true", "yes", "on", "y"}
 
 
 def column_names(kind: str):

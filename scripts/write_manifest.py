@@ -10,15 +10,15 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SKIP_DIRS = {"__pycache__", "tests", "scripts", "data", ".git", ".venv", ".pytest_cache", "node_modules", "sql"}
-SKIP_FILES = {".env", "manifest.json", "requirements-dev.txt", "app.yaml"}
+SKIP_DIRS = {"__pycache__", "tests", "scripts", "data", "reports", ".git", ".venv", ".pytest_cache", "node_modules", "sql"}
+SKIP_FILES = {".env", "manifest.json", "requirements-dev.txt"}
 
 
 def main() -> None:
     files = {}
     for p in sorted(ROOT.rglob("*")):
         rel = p.relative_to(ROOT)
-        if not p.is_file() or set(rel.parts[:-1]) & SKIP_DIRS or rel.name in SKIP_FILES or rel.suffix in (".pyc", ".sqlite"):
+        if not p.is_file() or set(rel.parts[:-1]) & SKIP_DIRS or rel.name in SKIP_FILES or rel.suffix in (".pyc", ".docx"):
             continue
         files[rel.as_posix()] = {"checksum": hashlib.md5(p.read_bytes()).hexdigest()}
     manifest = {

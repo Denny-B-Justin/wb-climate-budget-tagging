@@ -25,7 +25,7 @@ def store(tmp_path, monkeypatch):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv(C.ENV_CACHE_TTL, "0")
     sqlite_backend.install(tmp_path / "t.sqlite")
-    q.ensure_tables()
+    q.check_tables()
     yield q
     q.reset()
 

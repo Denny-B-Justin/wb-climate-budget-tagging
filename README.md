@@ -21,11 +21,10 @@ src/pages.py      layouts            src/methodology.py   the Methodologies page
 src/taxonomy_method/  the tagging engine (Rio Markers, EU Taxonomy)
 src/constants.py  names, table schemas, colours, country list, environment-variable names
 src/utils.py      formatting, charts, reusable components, Excel export
-src/queries.py    ALL storage access (Unity Catalog via Databricks SQL; the tests use a SQLite stand-in)
+src/queries.py    ALL storage access (Unity Catalog via Databricks SQL)
 src/pipeline.py   reading uploads, cleaning, running the taggers, background jobs
 assets/           style.css, self-hosted Fira Sans (SIL OFL), logo, favicon
 sql/              create_tables.sql (generated)      scripts/   print_ddl.py, write_manifest.py
-tests/            pytest suite
 ```
 
 ## Run it
@@ -70,40 +69,29 @@ GROUP BY country_iso3, year;
 
 | Variable | Meaning |
 |---|---|
-| `DATABRICKS_SERVER_HOSTNAME` (or `DATABRICKS_HOST`), `DATABRICKS_HTTP_PATH`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET` | Same names as the Country Benchmarking Dashboard, so one service principal serves both. The app signs in as that service principal (OAuth); no personal token is used. |
-| `CBT_CATALOG`, `CBT_SCHEMA` | Where the two tables live (no defaults in code; `.env.example` shows `prd_mega` / `sgpbpi163`). |
-| `CBT_AUTO_CREATE_TABLES` | `true` (default) creates missing tables and adds missing columns at start-up. |
-| `CBT_INSERT_MODE`, `CBT_INSERT_CHUNK_ROWS` | `json` (default; one parameter per statement, thousands of rows each) or `values` (portable multi-row VALUES). |
-| `CBT_ADMIN_USERS` | Comma-separated e-mails allowed to soft-delete/restore. Empty = every signed-in user. The user is read from `X-Forwarded-Email` / Posit Connect credentials headers. |
+| `DATABRICKS_SERVER_HOSTNAME`, `DATABRICKS_HTTP_PATH`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET` | Same names as the Country Benchmarking Dashboard, so one service principal serves both. The app signs in as that service principal (OAuth); no personal token is used. |
 | `CBT_MAX_UPLOAD_MB`, `CBT_MAX_ROWS`, `CBT_WORK_DIR` | Upload limits and where background-job files live. |
 | `QUERY_CACHE_TTL_SECONDS`, `QUERY_CACHE_MAX_ENTRIES` | Read cache for the Dashboard / Download data pages (same names as the CBD app). |
 
 ### Unity Catalog permissions
 
-The app's principal needs `USE CATALOG`, `USE SCHEMA`, and either `CREATE TABLE` on the schema (the app creates the tables) **or** the tables
-created once by an admin – `python scripts/print_ddl.py --catalog <c> --schema <s> > sql/create_tables.sql` – plus `SELECT` and `MODIFY` on them.
+The tables are `prd_mega.sgpbpi163.cbt_global_rio_markers` and `prd_mega.sgpbpi163.cbt_global_eu_taxonomy` (set in `src/constants.py`).
+The app never creates or alters them; an admin creates them once (`python scripts/print_ddl.py --catalog prd_mega --schema sgpbpi163`).
+The principal needs `USE CATALOG`, `USE SCHEMA`, `SELECT` and `MODIFY`.
 `CAN USE` on the SQL warehouse is needed as well.
 
 ## Deploy
 
 * **Posit Connect** – `python scripts/write_manifest.py` (or `rsconnect write-manifest dash`), deploy, set the variables above on the content item.
   The code is Python 3.9 compatible (the version the CBD app uses).
-* **Databricks Apps** – `app.yaml` is included; add the SQL warehouse as an app resource. The app listens on `DATABRICKS_APP_PORT`.
 * Background tagging/saving runs in threads inside the web process and keeps its state in `CBT_WORK_DIR`; use **one worker process** (or sticky
   sessions) so a browser can find its job again after a reload.
 
-## Tests
+## First run
 
-```bash
-pip install -r requirements-dev.txt
-pytest -q          # 68 tests: storage (soft-delete, restore, row-count guard, SQL text), pipeline, wiring of every callback id
-```
-
-Verified for this delivery: the full suite on Python 3.13 / Dash 4.4 / pandas 3 **and** Python 3.9 / Dash 3.4 / pandas 2.2; a headless-browser run of the
-whole flow on both stacks; every Databricks statement the app produces parses with Spark 4.2's SQL parser, and the `json` and `values` INSERT
-statements were executed in local Spark and read back (quotes, unicode, newlines, NULLs, timestamps round-trip). **Not tested here:** a live
-Databricks warehouse – in particular the Delta `UPDATE` that flips `validity` and the service-principal sign-in. Do a first save with a throw-away country
-in a dev schema before using real data.
+If a Databricks variable is missing, the app stops at start-up and lists the missing names (same as GoAT). Database errors are
+logged in full; users only see a short "data service is not available" message. Do a first save with a throw-away country before
+using real data.
 
 ## Known limits (also on the Methodologies page)
 

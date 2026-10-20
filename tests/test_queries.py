@@ -212,7 +212,7 @@ def test_config_validation(monkeypatch, caplog):
     q.reset()
     # no credentials: users get a plain message, the log names what is missing
     with pytest.raises(q.ServiceUnavailable) as e:
-        q.ensure_tables()
+        q.check_tables()
     assert "catalog" not in str(e.value).lower() and "DATABRICKS" not in str(e.value)
     assert C.ENV_HTTP_PATH in e.value.detail and C.ENV_CATALOG in e.value.detail
     with caplog.at_level("ERROR"):
@@ -309,3 +309,18 @@ def test_fetch_current_filters_countries_and_years(store):
     assert len(both[(both["country_iso3"] == "ZMB") & (both["year"] == 2022)]["batch_id"].unique()) == 1
     zmb = q.fetch_current(RIO, ["ZMB"], [2022])
     assert set(zmb["country_iso3"]) == {"ZMB"} and set(zmb["year"]) == {2022}
+
+
+def test_auth_failures_are_told_apart_from_permission_errors():
+    assert q._is_auth_failure(RuntimeError("Error during request to server. invalid_client: Client authentication failed"))
+    assert not q._is_auth_failure(RuntimeError("[INSUFFICIENT_PERMISSIONS] User does not have USE SCHEMA on prd_mega.x"))
+
+
+def test_check_tables_reports_missing_table_instead_of_creating_it(store):
+    with store._get_backend().session(write=True) as s:
+        s.execute("DROP TABLE %s" % q.table_fqn(EU))
+    with pytest.raises(q.ServiceUnavailable) as e:
+        q.check_tables(force=True)
+    assert "cbt_global_eu_taxonomy" in e.value.detail and "does not exist" in e.value.detail
+    with store._get_backend().session() as s:                      # still not there: nothing was created
+        assert store._get_backend().existing_columns(s, EU) == []

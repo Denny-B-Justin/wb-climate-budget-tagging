@@ -4,7 +4,7 @@ app.py
 Climate Budget Tagging - Dash app (part of the PIM-PAM suite).
 
 Run locally:      python app.py                 then open http://127.0.0.1:8050
-Production:       gunicorn app:server           (Posit Connect / Databricks Apps use their own launcher)
+Production:       Posit Connect (manifest.json; it serves `server` below)
 
 Structure
   app.py            this file: the Dash object, page frame and routing
@@ -104,22 +104,9 @@ app.clientside_callback(
 
 import callbacks  # noqa: E402,F401  (registers the callbacks on the app above)
 
-from src import queries as _queries  # noqa: E402
-
-
-def _log_storage_status() -> None:
-    """Report missing credentials / unreachable Unity Catalog in the log at start-up (never shown to users)."""
-    import threading
-    threading.Thread(target=_queries.startup_check, name="storage-check", daemon=True).start()
-
-
-_log_storage_status()
-
 
 def main() -> None:
-    port = int(os.getenv("DATABRICKS_APP_PORT") or os.getenv("PORT") or 8050)
-    host = os.getenv("HOST") or ("0.0.0.0" if os.getenv("DATABRICKS_APP_PORT") else "127.0.0.1")
-    app.run(debug=os.getenv("DASH_DEBUG", "").lower() in ("1", "true", "yes"), host=host, port=port)
+    app.run(debug=False, host="0.0.0.0", port=8050)
 
 
 if __name__ == "__main__":

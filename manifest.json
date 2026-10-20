@@ -15,13 +15,13 @@
   },
   "files": {
     ".env.example": {
-      "checksum": "5e92c81be531a72037f18bf34a16c189"
+      "checksum": "8a8ef77da95657d88b164dcb47e4a86f"
     },
     ".gitignore": {
       "checksum": "f6af68eff8fb0e943cec2911604e203d"
     },
     "app.py": {
-      "checksum": "f28ecdc3653511bd7c8b385f3824e1e2"
+      "checksum": "0bedc6c386a34ecff8c1d4a9fe9f7380"
     },
     "assets/climate-finance.svg": {
       "checksum": "15604e0d4993ed40ab7b848c4009de17"
@@ -56,20 +56,11 @@
     "assets/The-World-Bank-group-white.png": {
       "checksum": "596f6d13fdd22a2760464b4cc449ff24"
     },
-    "Budget Tagging.docx": {
-      "checksum": "042fbc36d32a224656c8b785fecc9def"
-    },
     "callbacks.py": {
-      "checksum": "5db5a844a670cf3d511e77f91be30e9d"
-    },
-    "CLIMATE BUDGET TAGGING REPORT.docx": {
-      "checksum": "b80b3b6dc1c24c4ac7289ec16f701e9d"
+      "checksum": "6fc49ac3b8e84a1057d152d92c06f1b9"
     },
     "README.md": {
-      "checksum": "c66a2fe76b9d629761c73b10f615dfb5"
-    },
-    "reports/Climate_Budget_Report_Global_2026.docx": {
-      "checksum": "92e51f4e83dc41998aab6bd71361a825"
+      "checksum": "f9f388aeecbbdeaae248dc48ceb19a01"
     },
     "requirements.txt": {
       "checksum": "55a2a2479a99afd186919ecef4b2ae07"
@@ -105,7 +96,7 @@
       "checksum": "d41d8cd98f00b204e9800998ecf8427e"
     },
     "src/constants.py": {
-      "checksum": "b6b85bcedd24e3db45612fbc6c375e35"
+      "checksum": "e44960d4922dd14e62355c8e477e2fe2"
     },
     "src/methodology.py": {
       "checksum": "a17e4d477d6931c0b8f8c900e26378b7"
@@ -114,10 +105,10 @@
       "checksum": "d3cf21270a2c08c9dd3ed1e8a2054ccd"
     },
     "src/pipeline.py": {
-      "checksum": "20c4357dba8a78d85caf54994f16b2e0"
+      "checksum": "e923634b0b889ad0e1348eaa98aec2e5"
     },
     "src/queries.py": {
-      "checksum": "0f5733b6a601d8d47d18cc2b61742bbf"
+      "checksum": "32af5939f3f1b1f59a43399d9737e648"
     },
     "src/taxonomy_method/__init__.py": {
       "checksum": "9485f44309131d8f0926e60ac2c8ea36"
@@ -135,7 +126,7 @@
       "checksum": "651a9c9f0c2a998b0e02beec32c81206"
     },
     "src/utils.py": {
-      "checksum": "dfed3853e0df1e88f42de8b8731aa46c"
+      "checksum": "999658900534dce92f4636e2fe57091b"
     }
   }
 }

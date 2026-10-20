@@ -53,6 +53,7 @@ from src.taxonomy_method.green_budget_tagger import (                           
 from src.taxonomy_method.green_budget_tagger_optimized import DeduplicationHelper       # noqa: E402  (unchanged module)
 from src.taxonomy_method.rio_marker_tagger import RioMarkerResult, RioMarkerTagger      # noqa: E402  (unchanged module)
 from src.taxonomy_method.eu_taxonomy_tagger import EUTaxonomyResult, EUTaxonomyTagger   # noqa: E402  (unchanged module)
+from src.queries import NeedsConfirmation, StoreError                     # noqa: E402
 
 log = logging.getLogger(__name__)
 
@@ -779,7 +780,7 @@ def run_tag_job(job_id: str, upload_name: str, suffix: str, sheet: Optional[str]
                      finished=time.time())
 
 
-def run_save_job(job_id: str, replace: bool, queries_module: Any) -> None:
+def run_save_job(job_id: str, replace: bool, qs: Any) -> None:
     """Background job: write the tagged frames of this session to Unity Catalog (staging + atomic flip)."""
     ch = "save"
     try:
@@ -803,12 +804,12 @@ def run_save_job(job_id: str, replace: bool, queries_module: Any) -> None:
                              done=done, total=total)
 
             write_status(job_id, ch, phase="Checking existing data for %s" % C.KIND_LABELS[kind])
-            reports.append(queries_module.save(kind, frame, replace=replace, progress=prog))
+            reports.append(qs.save(kind, frame, replace=replace, progress=prog))
         write_status(job_id, ch, state="done", phase="Saved", finished=time.time(),
                      report={"batch_id": batch_id, "reports": reports, "rows": total_rows})
-    except queries_module.NeedsConfirmation:
+    except NeedsConfirmation:
         write_status(job_id, ch, state="needs_confirmation", phase="Waiting for confirmation", finished=time.time())
-    except (PipelineError, queries_module.StoreError) as exc:
+    except (PipelineError, StoreError) as exc:
         write_status(job_id, ch, state="error", error=str(exc), finished=time.time())
     except Exception as exc:                                  # pragma: no cover
         log.exception("Save job failed")
@@ -816,7 +817,7 @@ def run_save_job(job_id: str, replace: bool, queries_module: Any) -> None:
                      finished=time.time())
 
 
-def build_save_plan(job_id: str, queries_module: Any) -> Dict[str, pd.DataFrame]:
+def build_save_plan(job_id: str, qs: Any) -> Dict[str, pd.DataFrame]:
     """For the confirmation dialog: what would saving do for each table / year (no writes)."""
     res = get_object(job_id, "result.pkl")
     if not res:
@@ -826,5 +827,5 @@ def build_save_plan(job_id: str, queries_module: Any) -> Dict[str, pd.DataFrame]
         if res.get(kind) is None:
             continue
         frame = finalize_for_save(kind, res[kind], res["meta"], res["stats"], "plan-only", None)
-        plans[kind] = queries_module.plan_save(kind, frame)
+        plans[kind] = qs.plan_save(kind, frame)
     return plans

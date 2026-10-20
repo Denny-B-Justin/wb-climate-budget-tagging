@@ -22,15 +22,16 @@ from urllib.parse import parse_qs
 import pandas as pd
 from dash import ALL, Input, Output, State, callback, ctx, dcc, get_asset_url, html, no_update
 from dash.exceptions import PreventUpdate
-from flask import request
 
 from src import constants as C
 from src import pages
 from src import pipeline as P
 from src import queries as q
+from src.queries import QueryService
 from src import utils as u
 
 log = logging.getLogger(__name__)
+qs = QueryService.get_instance()
 
 SHOW = {"display": "inline-flex"}
 HIDE = {"display": "none"}
@@ -42,11 +43,6 @@ def _page_key(search: Optional[str]) -> str:
     return parse_qs(search.lstrip("?")).get("page", [C.DEFAULT_PAGE])[0] or C.DEFAULT_PAGE
 
 
-def _actor() -> str:
-    try:
-        return u.actor_from_headers(request.headers)
-    except RuntimeError:                                   # outside a request (tests)
-        return ""
 
 
 def _job_id(job: Optional[Dict[str, Any]]) -> Optional[str]:
@@ -250,7 +246,7 @@ def save_flow(n_save, n_cancel, n_confirm, job, replace):
         return True, no_update, no_update, no_update, no_update, no_update
     if trig == "save-btn":
         try:
-            plans = P.build_save_plan(jid, q)
+            plans = P.build_save_plan(jid, qs)
         except (P.PipelineError, q.StoreError) as exc:
             return False, u.notice("error", str(exc), "Cannot check the existing data"), "Save", False, no_update, no_update
         changed = any((p["action"] == q.ACTION_CHANGED).any() for p in plans.values())
@@ -271,7 +267,7 @@ def save_flow(n_save, n_cancel, n_confirm, job, replace):
     if P.effective_state(status) == "running":
         raise PreventUpdate
     P.write_status(jid, "save", state="running", phase="Preparing", done=0, total=0, error=None, report=None)
-    P.start_thread(P.run_save_job, jid, bool(replace), q)
+    P.start_thread(P.run_save_job, jid, bool(replace), qs)
     return True, no_update, no_update, no_update, pages.save_status_content(P.read_status(jid, "save"), "running"), False
 
 
@@ -309,9 +305,9 @@ def _main_label(kind: str) -> str:
           State("dash-year", "value"), State("dash-countries", "value"))
 def dash_filters(kind, _n, year, countries):
     if ctx.triggered_id == "dash-refresh":
-        q.invalidate_cache()
+        qs.clear_cache()
     try:
-        agg = q.aggregates(kind or C.KIND_RIO)
+        agg = qs.get_aggregates(kind or C.KIND_RIO)
     except q.StoreError:
         return [{"label": "Latest available per country", "value": "latest"}], "latest", [], []
     years = sorted(agg["year"].unique().tolist(), reverse=True) if len(agg) else []
@@ -330,7 +326,7 @@ def dash_filters(kind, _n, year, countries):
 def render_dashboard(kind, basis, year, countries):
     kind = kind or C.KIND_RIO
     try:
-        agg = q.aggregates(kind)
+        agg = qs.get_aggregates(kind)
     except q.StoreError as exc:
         return u.notice("error", str(exc), "The dashboard is not available")
     if agg.empty:
@@ -439,7 +435,7 @@ def _download_columns(kind: str) -> Dict[str, str]:
 def download_summary(kind, countries, years):
     kind = kind or C.KIND_RIO
     try:
-        agg = q.aggregates(kind)
+        agg = qs.get_aggregates(kind)
     except q.StoreError as exc:
         return [], [], u.notice("error", str(exc), "Download is not available"), True
     if agg.empty:
@@ -471,7 +467,7 @@ def download_data(n, kind, countries, years):
         raise PreventUpdate
     kind = kind or C.KIND_RIO
     try:
-        df = q.fetch_current(kind, countries or None, years or None)
+        df = qs.get_download_data(kind, countries or None, years or None)
     except q.StoreError as exc:
         return no_update, u.notice("error", str(exc), "Download failed")
     if df.empty:

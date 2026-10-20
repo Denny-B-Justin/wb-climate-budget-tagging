@@ -68,11 +68,13 @@ class SqliteBackend(q._Backend):
         df = s.query("PRAGMA table_info(%s)" % q.table_fqn(kind))
         return df["name"].tolist() if len(df) else []
 
-    def add_column_sql(self, kind, col):
-        return "ALTER TABLE %s ADD COLUMN %s %s" % (q.table_fqn(kind), q._q(col.name), _SQLITE_TYPE[col.sql])
 
 
 def install(path):
-    """Point the storage layer at a throw-away SQLite file."""
+    """Point the storage layer at a throw-away SQLite file holding the two (empty) tables."""
     q.reset()
-    q.use_backend(SqliteBackend(q.get_config(), path))
+    be = SqliteBackend(q.get_config(), path)
+    q.use_backend(be)
+    with be.session(write=True) as s:
+        for kind in C.KINDS:
+            s.execute(be.create_table_sql(kind))
