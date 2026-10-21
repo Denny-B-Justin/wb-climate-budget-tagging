@@ -15,3 +15,10 @@ CLIMATE BUDGET TAGGING REPORT.docx
 data/
 .env
 reports/
+
+*.pyc
+.venv/
+.pytest_cache/
+data/
+*.sqlite
+node_modules/

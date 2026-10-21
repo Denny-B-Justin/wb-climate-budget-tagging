@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "locale": "English_United States.1252",
+  "metadata": {
+    "appmode": "python-dash",
+    "entrypoint": "app.py"
+  },
+  "python": {
+    "version": "3.9.13",
+    "package_manager": {
+      "name": "pip",
+      "version": "22.0.4",
+      "package_file": "requirements.txt"
+    }
+  },
+  "files": {
+    ".env.example": {
+      "checksum": "8a8ef77da95657d88b164dcb47e4a86f"
+    },
+    ".gitignore": {
+      "checksum": "f6af68eff8fb0e943cec2911604e203d"
+    },
+    "app.py": {
+      "checksum": "0bedc6c386a34ecff8c1d4a9fe9f7380"
+    },
+    "assets/climate-finance.svg": {
+      "checksum": "15604e0d4993ed40ab7b848c4009de17"
+    },
+    "assets/favicon.ico": {
+      "checksum": "f1e6e3c8ccc3c5683c2ceb61f79f714a"
+    },
+    "assets/fonts/fira-sans-latin-300-normal.woff2": {
+      "checksum": "aeb66f4f2c7c6a47d3a4d92009525dc9"
+    },
+    "assets/fonts/fira-sans-latin-400-italic.woff2": {
+      "checksum": "022ce95a9787824d3ea819e104e5e3cc"
+    },
+    "assets/fonts/fira-sans-latin-400-normal.woff2": {
+      "checksum": "d26e1b11589f2c2744eadc0ac2ffae94"
+    },
+    "assets/fonts/fira-sans-latin-500-normal.woff2": {
+      "checksum": "9410bb8f89e52fc8df5f0aca7009947c"
+    },
+    "assets/fonts/fira-sans-latin-600-normal.woff2": {
+      "checksum": "beb3d7395726910999a3b89eb76e9a4b"
+    },
+    "assets/fonts/fira-sans-latin-700-normal.woff2": {
+      "checksum": "43eb5ca3942e0f74137d8754629fb9e6"
+    },
+    "assets/fonts/FiraSans-OFL-LICENSE.txt": {
+      "checksum": "4538a5afdd18ccebd224405ffe3dee4b"
+    },
+    "assets/style.css": {
+      "checksum": "d67c8c63c00780d1953a7d8111dae8d2"
+    },
+    "assets/The-World-Bank-group-white.png": {
+      "checksum": "596f6d13fdd22a2760464b4cc449ff24"
+    },
+    "callbacks.py": {
+      "checksum": "6fc49ac3b8e84a1057d152d92c06f1b9"
+    },
+    "README.md": {
+      "checksum": "f9f388aeecbbdeaae248dc48ceb19a01"
+    },
+    "requirements.txt": {
+      "checksum": "55a2a2479a99afd186919ecef4b2ae07"
+    },
+    "sample_data/sample_input_budget.xlsx": {
+      "checksum": "f33d3e06e35bb4242a39a41943592fb3"
+    },
+    "shared/__init__.py": {
+      "checksum": "b0c192d16c05a6d603fde32e8840b03e"
+    },
+    "shared/cofog_mapping.json": {
+      "checksum": "39a2734b2fdc119bf9de90958e097d5c"
+    },
+    "shared/eu_taxonomy_keywords.py": {
+      "checksum": "70424610e9993a310430ba2b39217845"
+    },
+    "shared/metrics.py": {
+      "checksum": "fc65941260b5bf476b23f5cfc551fd43"
+    },
+    "shared/report_generator.py": {
+      "checksum": "f58f17ed0f89702b5d537f0b0be50c62"
+    },
+    "shared/rio_keywords.py": {
+      "checksum": "eb5965cdf15bac5edb8cc7c14008f8ea"
+    },
+    "shared/storage.py": {
+      "checksum": "324612e9de8b1e3fdd6135ba890208ce"
+    },
+    "shared/visualizations.py": {
+      "checksum": "311a5b8aa9dadc2b3c2576b86cfdb6ef"
+    },
+    "src/__init__.py": {
+      "checksum": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "src/constants.py": {
+      "checksum": "e44960d4922dd14e62355c8e477e2fe2"
+    },
+    "src/methodology.py": {
+      "checksum": "a17e4d477d6931c0b8f8c900e26378b7"
+    },
+    "src/pages.py": {
+      "checksum": "d3cf21270a2c08c9dd3ed1e8a2054ccd"
+    },
+    "src/pipeline.py": {
+      "checksum": "e923634b0b889ad0e1348eaa98aec2e5"
+    },
+    "src/queries.py": {
+      "checksum": "32af5939f3f1b1f59a43399d9737e648"
+    },
+    "src/taxonomy_method/__init__.py": {
+      "checksum": "9485f44309131d8f0926e60ac2c8ea36"
+    },
+    "src/taxonomy_method/eu_taxonomy_tagger.py": {
+      "checksum": "0b0567b8abe5ae5d0ea6aa06c6489d91"
+    },
+    "src/taxonomy_method/green_budget_tagger.py": {
+      "checksum": "cb7de73cfbf677c92067270797975a00"
+    },
+    "src/taxonomy_method/green_budget_tagger_optimized.py": {
+      "checksum": "096436aaa950be8ad986c9d94fe5ef24"
+    },
+    "src/taxonomy_method/rio_marker_tagger.py": {
+      "checksum": "651a9c9f0c2a998b0e02beec32c81206"
+    },
+    "src/utils.py": {
+      "checksum": "999658900534dce92f4636e2fe57091b"
+    }
+  }
+}

@@ -27,7 +27,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 # Import all the tagging logic from original (unchanged)
-from green_budget_tagger import (
+from src.taxonomy_method.green_budget_tagger import (
     ClimateTag, Confidence, EnvironmentalObjective, TaggingResult,
     FUNC1_DEFAULT_TAGS, ECON_SIGNALS, GREEN_KEYWORDS, BROWN_KEYWORDS,
     EXCLUSION_CONTEXTS, COFOGTagger, LLMTagger, ExcelProcessor,
