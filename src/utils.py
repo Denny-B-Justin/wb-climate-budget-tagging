@@ -393,8 +393,8 @@ def build_header(current_page: str, wb_logo: Optional[str] = None) -> html.Heade
             links.append(html.A([text, icon("external")], href=href, target="_blank", rel="noopener", className=cls))
         else:
             links.append(dcc.Link(text, href=href, className=cls))
-    links.append(html.A(["%s" % C.SUITE_NAME, icon("external")], href=C.SUITE_URL, target="_blank",
-                        rel="noopener noreferrer", className="nav-link"))
+    # links.append(html.A(["%s" % C.SUITE_NAME, icon("external")], href=C.SUITE_URL, target="_blank",
+                        # rel="noopener noreferrer", className="nav-link"))
     return html.Header(className="app-header", children=html.Div(className="app-header-inner", children=[
         dcc.Link([html.Img(src=get_asset_url("cbt_logo.svg"), className="brand-mark", alt=""),
                   html.Span(C.APP_NAME, className="header-name")], href="?page=%s" % C.DEFAULT_PAGE, className="header-brand"),
@@ -406,12 +406,12 @@ def build_footer(wb_logo: Optional[str] = None) -> html.Footer:
     return html.Footer(className="site-footer", children=html.Div(className="site-footer-inner", children=[
         html.Div(className="footer-about", children=[
             html.Img(src=wb_logo, className="footer-wb", alt="World Bank Group") if wb_logo else None,
-            html.P("Part of the PIM-PAM suite - a World Bank initiative promoting digital tools for smarter "
-                   "public investment and asset management."),
+            html.P("A World Bank initiative promoting digital tools for smarter "
+                   "public investment."),
         ]),
-        html.Div(className="footer-links", children=[
-            html.A("PIM-PAM", href=C.SUITE_URL, target="_blank", rel="noopener noreferrer"),
-        ]),
+        # html.Div(className="footer-links", children=[
+        #     html.A("PIM-PAM", href=C.SUITE_URL, target="_blank", rel="noopener noreferrer"),
+        # ]),
     ]))
 
 

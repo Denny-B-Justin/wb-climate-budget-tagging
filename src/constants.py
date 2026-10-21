@@ -26,7 +26,7 @@ APP_SHORT = "CBT"
 APP_TAGLINE = "Tag government budget lines against the Rio Markers and the EU Taxonomy"
 METHODOLOGY_VERSION = "1.0"          # bump when keyword lists or rules change; stored on every row
 SUITE_URL = "https://datanalytics.worldbank.org/wkpgf-pimpam-digital-tools/"
-SUITE_NAME = "PIM-PAM"
+SUITE_NAME = "CBT"
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 ASSETS_DIR = ROOT_DIR / "assets"

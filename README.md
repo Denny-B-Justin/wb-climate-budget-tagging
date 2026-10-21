@@ -1,6 +1,6 @@
 # Climate Budget Tagging Tool
 
-A Dash web app, part of the PIM-PAM suite, that tags the lines of a government budget with the **Rio Markers** and the **EU Taxonomy**
+A Dash web app that tags the lines of a government budget with the **Rio Markers** and the **EU Taxonomy**
 objectives, lets the analyst review the result, and saves it to two **global Unity Catalog tables**.
 
 * **Tag a budget** – enter metadata (country, year, source, who prepared it), upload an Excel/CSV file, match columns, run the tagging, review, save.

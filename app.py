@@ -1,7 +1,7 @@
 """
 app.py
 ------
-Climate Budget Tagging - Dash app (part of the PIM-PAM suite).
+Climate Budget Tagging - Dash app.
 
 Run locally:      python app.py                 then open http://127.0.0.1:8050
 Production:       Posit Connect (manifest.json; it serves `server` below)
