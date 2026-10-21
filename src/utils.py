@@ -19,7 +19,7 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from dash import dash_table, dcc, html
+from dash import dash_table, dcc, get_asset_url, html
 
 from . import constants as C
 
@@ -396,7 +396,7 @@ def build_header(current_page: str, wb_logo: Optional[str] = None) -> html.Heade
     links.append(html.A(["%s" % C.SUITE_NAME, icon("external")], href=C.SUITE_URL, target="_blank",
                         rel="noopener noreferrer", className="nav-link"))
     return html.Header(className="app-header", children=html.Div(className="app-header-inner", children=[
-        dcc.Link([html.Span("CBT", className="brand-mark", **{"aria-hidden": "true"}),
+        dcc.Link([html.Img(src=get_asset_url("cbt_logo.svg"), className="brand-mark", alt=""),
                   html.Span(C.APP_NAME, className="header-name")], href="?page=%s" % C.DEFAULT_PAGE, className="header-brand"),
         html.Nav(className="header-nav", **{"aria-label": "Main"}, children=links),
     ]))

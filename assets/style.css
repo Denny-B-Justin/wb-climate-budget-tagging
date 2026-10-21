@@ -110,8 +110,7 @@ code, pre { font-family: var(--mono); }
 .app-header-inner { max-width: calc(var(--content-w) + 2 * var(--gutter)); height: 100%; margin: 0 auto; padding: 0 var(--gutter);
   display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .header-brand { display: flex; align-items: center; gap: 12px; }
-.brand-mark { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 9px;
-  border-radius: 6px; background: var(--teal); color: var(--navy); font-weight: 700; font-size: 14px; letter-spacing: .04em; }
+.brand-mark { display: block; width: 36px; height: 36px; border-radius: 6px; flex-shrink: 0; }
 .header-name { font-weight: 500; font-size: 17px; letter-spacing: .005em; }
 .header-nav { display: flex; align-items: center; gap: 4px; }
 .nav-link { display: inline-flex; align-items: center; gap: 5px; padding: 8px 12px;
