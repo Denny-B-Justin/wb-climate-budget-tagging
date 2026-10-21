@@ -407,7 +407,7 @@ def build_footer(wb_logo: Optional[str] = None) -> html.Footer:
         html.Div(className="footer-about", children=[
             html.Img(src=wb_logo, className="footer-wb", alt="World Bank Group") if wb_logo else None,
             html.P("A World Bank initiative promoting digital tools for smarter "
-                   "public investment."),
+                   "budget."),
         ]),
         # html.Div(className="footer-links", children=[
         #     html.A("PIM-PAM", href=C.SUITE_URL, target="_blank", rel="noopener noreferrer"),
